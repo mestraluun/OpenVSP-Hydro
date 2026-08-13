@@ -36,6 +36,25 @@ VspAeroControlSurf::VspAeroControlSurf()
     iReflect = false;
 }
 
+// Standard freestream densities (consistent with the slug/ft^3, ft, s units these VSPAEROMgr
+// defaults have always used) for the FLUID_AIR/FLUID_FRESH_WATER/FLUID_SALT_WATER presets.
+// FLUID_CUSTOM returns the density unchanged so a manually-set Rho is left alone.
+double VSPAEROMgrSingleton::FluidTypeToRho( int fluid_type, double custom_rho )
+{
+    switch ( fluid_type )
+    {
+        case vsp::FLUID_AIR:
+            return 0.0023769; // Sea level, standard day
+        case vsp::FLUID_FRESH_WATER:
+            return 1.94;
+        case vsp::FLUID_SALT_WATER:
+            return 1.99;
+        case vsp::FLUID_CUSTOM:
+        default:
+            return custom_rho;
+    }
+}
+
 //==== Constructor ====//
 VSPAEROMgrSingleton::VSPAEROMgrSingleton() : ParmContainer()
 {
@@ -216,8 +235,10 @@ VSPAEROMgrSingleton::VSPAEROMgrSingleton() : ParmContainer()
     // Other Setup Parameters
     m_Vinf.Init( "Vinf", groupname, this, 100, 0, 1e6 );
     m_Vinf.SetDescript( "Freestream Velocity Through Propeller or Actuator Disk or for Stability Analysis" );
-    m_Rho.Init( "Rho", groupname, this, 0.002377, 0, 1e3 );
+    m_Rho.Init( "Rho", groupname, this, FluidTypeToRho( vsp::FLUID_SALT_WATER, 0.0023769 ), 0, 1e3 );
     m_Rho.SetDescript( "Freestream Density.  Used to Calculate Propeller or Actuator Disk Coefficients and to Dimensionalize Forces and Moments.  Set to a Fluid Density (e.g. Fresh or Salt Water) for Hydrodynamic Analyses" );
+    m_FluidType.Init( "FluidType", groupname, this, vsp::FLUID_SALT_WATER, vsp::FLUID_AIR, vsp::FLUID_CUSTOM );
+    m_FluidType.SetDescript( "Freestream Fluid Preset.  Air, Fresh Water, and Salt Water Fill In a Standard Rho; Custom Leaves Rho as a Free Input" );
     m_Vref.Init( "Vref", groupname, this, 100, 0, 1e12 );
     m_Vref.SetDescript( "Reference Velocity. Set to Rotor Tip Speed for Hover Analysis (Vinf = 0)" );
     m_ManualVrefFlag.Init( "ManualVrefFlag", groupname, this, false, false, true );
@@ -507,7 +528,8 @@ void VSPAEROMgrSingleton::Renew()
 
     // Other Setup Parameters );
     m_Vinf.Set( 100 );
-    m_Rho.Set( 0.002377 );
+    m_FluidType.Set( vsp::FLUID_SALT_WATER );
+    m_Rho.Set( FluidTypeToRho( m_FluidType() ) );
     m_Vref.Set( 100 );
     m_ManualVrefFlag.Set( false );
 
@@ -4760,6 +4782,11 @@ void VSPAEROMgrSingleton::UpdateParmRestrictions()
     if ( !m_ManualVrefFlag() )
     {
         m_Vref.Set( m_Vinf() );
+    }
+
+    if ( m_FluidType() != vsp::FLUID_CUSTOM )
+    {
+        m_Rho.Set( FluidTypeToRho( m_FluidType() ) );
     }
 
     if ( NumUnsteadyRotorGroups() == 0 )

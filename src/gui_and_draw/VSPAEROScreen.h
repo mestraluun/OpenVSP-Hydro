@@ -265,6 +265,7 @@ protected:
 
     // Prop General Layout
     SliderAdjRangeInput m_VinfSlider;
+    Choice m_FluidTypeChoice;
     SliderAdjRangeInput m_RhoSlider;
     SliderAdjRangeInput m_MachRefSlider;
     SliderAdjRangeInput m_VRefSlider;

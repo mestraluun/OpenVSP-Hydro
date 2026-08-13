@@ -533,7 +533,7 @@ VSPAEROScreen::VSPAEROScreen( ScreenMgr* mgr ) : TabScreen( mgr, VSPAERO_SCREEN_
     // Advanced Flow
     m_AdvancedRightLayout.AddSubGroupLayout( m_FlowCondLayout,
                                              m_AdvancedRightLayout.GetW(),
-                                             4 * m_AdvancedRightLayout.GetStdHeight() +
+                                             5 * m_AdvancedRightLayout.GetStdHeight() +
                                              m_AdvancedRightLayout.GetDividerHeight() +
                                              m_AdvancedRightLayout.GetGapHeight() );
     m_AdvancedRightLayout.AddY( m_FlowCondLayout.GetH() );
@@ -558,6 +558,14 @@ VSPAEROScreen::VSPAEROScreen( ScreenMgr* mgr ) : TabScreen( mgr, VSPAERO_SCREEN_
     m_FlowCondLayout.AddSlider( m_MachRefSlider, "MachRef", 1000, "%7.3g" );
 
     m_FlowCondLayout.AddYGap();
+
+    m_FlowCondLayout.SetChoiceButtonWidth( m_FlowCondLayout.GetButtonWidth() );
+    m_FlowCondLayout.AddChoice( m_FluidTypeChoice, "Fluid" );
+    m_FluidTypeChoice.AddItem( "Air (Sea Level)", vsp::FLUID_AIR );
+    m_FluidTypeChoice.AddItem( "Fresh Water", vsp::FLUID_FRESH_WATER );
+    m_FluidTypeChoice.AddItem( "Salt Water", vsp::FLUID_SALT_WATER );
+    m_FluidTypeChoice.AddItem( "Custom", vsp::FLUID_CUSTOM );
+    m_FluidTypeChoice.UpdateItems();
 
     m_FlowCondLayout.AddSlider( m_RhoSlider, "Rho", 1, "%2.5g" );
 
@@ -2073,6 +2081,7 @@ void VSPAEROScreen::UpdateControlSurfaceBrowsers()
 void VSPAEROScreen::UpdateOtherSetupParms()
 {
     m_VinfSlider.Update( VSPAEROMgr.m_Vinf.GetID() );
+    m_FluidTypeChoice.Update( VSPAEROMgr.m_FluidType.GetID() );
     m_RhoSlider.Update( VSPAEROMgr.m_Rho.GetID() );
     m_ActivateVRefToggle.Update( VSPAEROMgr.m_ManualVrefFlag.GetID() );
     m_VRefSlider.Update( VSPAEROMgr.m_Vref.GetID() );
@@ -2114,18 +2123,31 @@ void VSPAEROScreen::UpdateOtherSetupParms()
         m_ReCrefNptsInput.Activate();
     }
 
-    if ( VSPAEROMgr.m_PropBladesMode() != vsp::VSPAERO_PROP_STATIC ||
-         VSPAEROMgr.ExistRotorDisk() ||
-       ( VSPAEROMgr.m_StabilityType.Get() > vsp::STABILITY_OFF && VSPAEROMgr.m_StabilityType.Get() < vsp::STABILITY_PITCH ) )
+    bool flow_cond_relevant = ( VSPAEROMgr.m_PropBladesMode() != vsp::VSPAERO_PROP_STATIC ||
+                                 VSPAEROMgr.ExistRotorDisk() ||
+                               ( VSPAEROMgr.m_StabilityType.Get() > vsp::STABILITY_OFF && VSPAEROMgr.m_StabilityType.Get() < vsp::STABILITY_PITCH ) );
+
+    if ( flow_cond_relevant )
     {
         m_VinfSlider.Activate();
         m_ActivateVRefToggle.Activate();
-        m_RhoSlider.Activate();
+        m_FluidTypeChoice.Activate();
     }
     else
     {
         m_VinfSlider.Deactivate();
         m_ActivateVRefToggle.Deactivate();
+        m_FluidTypeChoice.Deactivate();
+    }
+
+    // Rho is only directly editable when a Custom fluid is selected; Air/Fresh Water/Salt Water
+    // fill it in automatically (see VSPAEROMgrSingleton::UpdateParmRestrictions).
+    if ( flow_cond_relevant && VSPAEROMgr.m_FluidType() == vsp::FLUID_CUSTOM )
+    {
+        m_RhoSlider.Activate();
+    }
+    else
+    {
         m_RhoSlider.Deactivate();
     }
 }

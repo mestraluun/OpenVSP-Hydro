@@ -1654,6 +1654,18 @@ enum VSPAERO_STALL_TYPE { STALL_OFF,	/*!< Stall modeling off */
 /*!
 	\ingroup Enumerations
 */
+/*! Enum for VSPAERO freestream fluid presets.  Selecting Air, Fresh Water, or Salt Water fills in
+    a standard density for that fluid; Custom leaves the density Parm as a free, manually-set input. */
+enum VSPAERO_FLUID_TYPE { FLUID_AIR,	/*!< Air at sea level, standard day (0.0023769 slug/ft^3, 1.225 kg/m^3) */
+                          FLUID_FRESH_WATER,	/*!< Fresh water (1.94 slug/ft^3, 1000 kg/m^3) */
+                          FLUID_SALT_WATER,	/*!< Salt water / seawater (1.99 slug/ft^3, 1025 kg/m^3) */
+                          FLUID_CUSTOM,	/*!< Manually specified freestream density */
+                          FLUID_NUM_TYPES	/*!< Number of freestream fluid presets */
+};
+
+/*!
+	\ingroup Enumerations
+*/
 /*! Enum that is used to describe surfaces in CFD Mesh. */
 enum VSP_SURF_CFD_TYPE { CFD_NORMAL,	/*!< Normal CFD Mesh surface */
                          CFD_NEGATIVE,	/*!< Negative volume CFD Mesh surface */
