@@ -217,7 +217,7 @@ VSPAEROMgrSingleton::VSPAEROMgrSingleton() : ParmContainer()
     m_Vinf.Init( "Vinf", groupname, this, 100, 0, 1e6 );
     m_Vinf.SetDescript( "Freestream Velocity Through Propeller or Actuator Disk or for Stability Analysis" );
     m_Rho.Init( "Rho", groupname, this, 0.002377, 0, 1e3 );
-    m_Rho.SetDescript( "Freestream Density. Used to Calculate Propeller or Actuator Disk Coefficients" );
+    m_Rho.SetDescript( "Freestream Density.  Used to Calculate Propeller or Actuator Disk Coefficients and to Dimensionalize Forces and Moments.  Set to a Fluid Density (e.g. Fresh or Salt Water) for Hydrodynamic Analyses" );
     m_Vref.Init( "Vref", groupname, this, 100, 0, 1e12 );
     m_Vref.SetDescript( "Reference Velocity. Set to Rotor Tip Speed for Hover Analysis (Vinf = 0)" );
     m_ManualVrefFlag.Init( "ManualVrefFlag", groupname, this, false, false, true );
@@ -2287,6 +2287,53 @@ ProcessUtil* VSPAEROMgrSingleton::GetSlicerProcess()
 
 
 /*******************************************************
+Scale non-dimensional force/moment coefficient histories by the flow's dynamic pressure and the
+model's geometric references to recover dimensional forces and moments.  This mirrors the exact
+formula the VSPAERO solver itself uses internally to non-dimensionalize forces before writing
+coefficients to its output files (see VSP_SOLVER::CalculateForces in VSP_Solver.C):
+    F = C * 0.5 * Rho * Vref^2 * Sref
+    Mx, Mz = CM * 0.5 * Rho * Vref^2 * Sref * Bref   (roll, yaw)
+    My     = CM * 0.5 * Rho * Vref^2 * Sref * Cref   (pitch)
+Units follow whatever consistent length/mass/time system Rho, Vref, and the references are set
+in -- e.g. SI (kg, m, s) inputs yield Newtons and Newton-meters, Imperial (slug, ft, s) inputs
+yield pounds-force and foot-pounds.  Set Rho to a water density (rather than the default sea
+level air density) to get dimensional hydrofoil forces.
+*******************************************************/
+void VSPAEROMgrSingleton::AddDimensionalForceMomentResults( Results * res, double sref, double bref, double cref, double rho, double vel,
+        const vector<double> &cltot, const vector<double> &cdtot, const vector<double> &cstot,
+        const vector<double> &cfxtot, const vector<double> &cfytot, const vector<double> &cfztot,
+        const vector<double> &cmxtot, const vector<double> &cmytot, const vector<double> &cmztot )
+{
+    if ( !res )
+    {
+        return;
+    }
+
+    double q = 0.5 * rho * vel * vel; // Dynamic pressure
+    double qs = q * sref;
+
+    auto scale = []( const vector<double> &c, double k )
+    {
+        vector<double> f( c.size() );
+        for ( size_t i = 0; i < c.size(); i++ )
+        {
+            f[i] = c[i] * k;
+        }
+        return f;
+    };
+
+    res->Add( new NameValData( "FLift", scale( cltot, qs ), "Dimensional lift force.  FLift = CLtot * 0.5*Rho*Vref^2*Sref." ) );
+    res->Add( new NameValData( "FDrag", scale( cdtot, qs ), "Dimensional drag force.  FDrag = CDtot * 0.5*Rho*Vref^2*Sref." ) );
+    res->Add( new NameValData( "FSide", scale( cstot, qs ), "Dimensional side force.  FSide = CStot * 0.5*Rho*Vref^2*Sref." ) );
+    res->Add( new NameValData( "Fx", scale( cfxtot, qs ), "Dimensional X force." ) );
+    res->Add( new NameValData( "Fy", scale( cfytot, qs ), "Dimensional Y force." ) );
+    res->Add( new NameValData( "Fz", scale( cfztot, qs ), "Dimensional Z force." ) );
+    res->Add( new NameValData( "Mx", scale( cmxtot, qs * bref ), "Dimensional X (roll) moment." ) );
+    res->Add( new NameValData( "My", scale( cmytot, qs * cref ), "Dimensional Y (pitch) moment." ) );
+    res->Add( new NameValData( "Mz", scale( cmztot, qs * bref ), "Dimensional Z (yaw) moment." ) );
+}
+
+/*******************************************************
 Read .HISTORY file output from VSPAERO
 See: VSP_Solver.C in vspaero project
 line 4351 - void VSP_SOLVER::OutputStatusFile(int Type)
@@ -2560,6 +2607,25 @@ void VSPAEROMgrSingleton::ReadHistoryFile( const string &filename, vector <strin
                 res->Add( new NameValData( "log10( L2Residual )", l10L2Resid, "log10( L2Residual )" ) );
                 res->Add( new NameValData( "log10( MaxResidual )", l10MaxResid, "log10( MaxResidual )" ) );
                 res->Add( new NameValData( "WallTime", WallTime, "Current Wall Time" ) );
+
+                // Recover the flight condition this case was actually run at (echoed into the case
+                // header by the solver) so the dimensional forces are correct even if the live
+                // VSPAEROMgr Parms have since changed.
+                double sref = m_Sref(), bref = m_bref(), cref = m_cref(), rho = m_Rho(), vinf = m_Vinf();
+                NameValData *nvd;
+                if ( ( nvd = res->FindPtr( "FC_Sref_" ) ) ) sref = nvd->GetDouble( 0 );
+                if ( ( nvd = res->FindPtr( "FC_Bref_" ) ) ) bref = nvd->GetDouble( 0 );
+                if ( ( nvd = res->FindPtr( "FC_Cref_" ) ) ) cref = nvd->GetDouble( 0 );
+                if ( ( nvd = res->FindPtr( "FC_Rho_" ) ) )  rho  = nvd->GetDouble( 0 );
+                if ( ( nvd = res->FindPtr( "FC_Vinf_" ) ) ) vinf = nvd->GetDouble( 0 );
+
+                // Vinf = 0 for hover/static analyses; fall back to the reference velocity used to
+                // non-dimensionalize that case (VSPAEROMgr keeps m_Vref == m_Vinf unless the user has
+                // set a manual reference velocity).
+                double vel = ( std::abs( vinf ) > 1e-8 ) ? vinf : m_Vref();
+
+                AddDimensionalForceMomentResults( res, sref, bref, cref, rho, vel,
+                        CLtot, CDtot, CStot, CFxtot, CFytot, CFztot, CMxtot, CMytot, CMztot );
             }
 
         } // end of wake iteration
@@ -2864,6 +2930,13 @@ void VSPAEROMgrSingleton::ReadPolarFile( const string &filename, vector <string>
                     res->Add( new NameValData( "L_Dw", LoD, "Lift to drag ratio using wake formulation." ) );
                     res->Add( new NameValData( "Ew", E, "Oswald efficiency factor using wake formulation." ) );
                     res->Add( new NameValData( "StallFactor", StallFactor, "Stall factor." ) );
+
+                    // Sref, Bref, Cref, Rho, and Vinf are fixed for the whole sweep (VSPAERO is run
+                    // once per polar, not once per alpha/beta/mach point), so the live VSPAEROMgr
+                    // Parms are the correct flight condition for every row here.
+                    double vel = ( std::abs( m_Vinf() ) > 1e-8 ) ? m_Vinf() : m_Vref();
+                    AddDimensionalForceMomentResults( res, m_Sref(), m_bref(), m_cref(), m_Rho(), vel,
+                            CLtot, CDtot, CStot, CFxtot, CFytot, CFztot, CMxtot, CMytot, CMztot );
 
                     // Add results at the end to keep new VSPAERO_HIstory results together in the CSV export
                     res_id_vector.push_back( res->GetID() );

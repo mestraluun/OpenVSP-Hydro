@@ -570,6 +570,10 @@ protected:
     static bool CheckForCaseHeader( const std::vector<string> &headerStr );
     static bool CheckForResultHeader( const std::vector < string > &headerstr );
     static int ReadVSPAEROCaseHeader( Results * res, FILE * fp );
+    static void AddDimensionalForceMomentResults( Results * res, double sref, double bref, double cref, double rho, double vel,
+            const vector<double> &cltot, const vector<double> &cdtot, const vector<double> &cstot,
+            const vector<double> &cfxtot, const vector<double> &cfytot, const vector<double> &cfztot,
+            const vector<double> &cmxtot, const vector<double> &cmytot, const vector<double> &cmztot );
     void ReadSetupFile(); // Read the VSPAERO setup file to identify VSPAERO inputs needed to generate existing VSPAERO results
     void ReadSliceFile( const string &filename, vector <string> &res_id_vector ) const;
     static void ReadGroupResFile( const string &filename, vector <string> &res_id_vector, const string &group_name = "" );
