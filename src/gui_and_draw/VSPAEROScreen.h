@@ -175,6 +175,8 @@ protected:
     Input m_BetaStartInput, m_BetaEndInput, m_BetaNptsInput;
     Input m_MachStartInput, m_MachEndInput, m_MachNptsInput;
     Input m_ReCrefStartInput, m_ReCrefEndInput, m_ReCrefNptsInput;
+    ToggleButton m_SweepByVinfToggle;
+    Input m_VinfStartInput, m_VinfEndInput, m_VinfNptsInput;
 
     // Execute Layout
     TriggerButton m_SolverButton;
@@ -268,9 +270,12 @@ protected:
     Choice m_FluidTypeChoice;
     Choice m_FluidUnitSystemChoice;
     SliderAdjRangeInput m_RhoSlider;
+    SliderAdjRangeInput m_KinematicViscSlider;
     SliderAdjRangeInput m_MachRefSlider;
     SliderAdjRangeInput m_VRefSlider;
     ToggleButton m_ActivateVRefToggle;
+    ToggleButton m_ShowForceVectorToggle;
+    SliderAdjRangeInput m_ForceVectorScaleSlider;
 
     // Prop Elem Layout
     ColResizeBrowser* m_PropElemBrowser;

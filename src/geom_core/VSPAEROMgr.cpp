@@ -59,6 +59,28 @@ double VSPAEROMgrSingleton::FluidTypeToRho( int fluid_type, int unit_system, dou
     }
 }
 
+// Standard freestream kinematic viscosities for the fluid presets, at typical reference
+// temperature/salinity (~15 C air, ~20 C water), in the same unit system as FluidTypeToRho.  Used
+// only by VSPAEROMgr's own post-processing to convert a solved Reynolds number back into a
+// velocity (VSPAERO's solver itself only ever consumes ReCref, never viscosity directly).
+double VSPAEROMgrSingleton::FluidTypeToNu( int fluid_type, int unit_system, double custom_nu )
+{
+    bool si = ( unit_system == vsp::FLUID_UNIT_SI );
+
+    switch ( fluid_type )
+    {
+        case vsp::FLUID_AIR:
+            return si ? 1.460e-5 : 1.5723e-4; // m^2/s : ft^2/s
+        case vsp::FLUID_FRESH_WATER:
+            return si ? 1.004e-6 : 1.081e-5;
+        case vsp::FLUID_SALT_WATER:
+            return si ? 1.05e-6 : 1.13e-5;
+        case vsp::FLUID_CUSTOM:
+        default:
+            return custom_nu;
+    }
+}
+
 //==== Constructor ====//
 VSPAEROMgrSingleton::VSPAEROMgrSingleton() : ParmContainer()
 {
@@ -129,6 +151,11 @@ VSPAEROMgrSingleton::VSPAEROMgrSingleton() : ParmContainer()
 
     m_Zcg.Init( "Zcg", groupname, this, 0.0, -1.0e12, 1.0e12 );
     m_Zcg.SetDescript( "Z Center of Gravity" );
+
+    m_ShowForceVectorFlag.Init( "ShowForceVectorFlag", groupname, this, false, false, true );
+    m_ShowForceVectorFlag.SetDescript( "Draw the Latest Run's Total Force Vector (Fx, Fy, Fz) as an Arrow From the CG in the 3D View" );
+    m_ForceVectorScale.Init( "ForceVectorScale", groupname, this, 1.0, 0, 1e12 );
+    m_ForceVectorScale.SetDescript( "Length (in Model Units) the Force Vector Arrow is Drawn at per Unit of Force -- Tune This so the Arrow is a Reasonable Size Relative to the Model" );
 
 
     // Flow Condition
@@ -238,13 +265,21 @@ VSPAEROMgrSingleton::VSPAEROMgrSingleton() : ParmContainer()
 
     // Other Setup Parameters
     m_Vinf.Init( "Vinf", groupname, this, 100, 0, 1e6 );
-    m_Vinf.SetDescript( "Freestream Velocity Through Propeller or Actuator Disk or for Stability Analysis" );
+    m_Vinf.SetDescript( "Freestream Velocity.  Also Used Through Propeller or Actuator Disk or for Stability Analysis.  Start of the Velocity Sweep When SweepByVinfFlag is Set" );
+    m_SweepByVinfFlag.Init( "SweepByVinfFlag", groupname, this, true, false, true );
+    m_SweepByVinfFlag.SetDescript( "Sweep Vinf (Start/End/Npts) and Derive ReCref From It (Using the Fluid's Reference Chord and Kinematic Viscosity), Instead of Setting ReCref Directly" );
+    m_VinfEnd.Init( "VinfEnd", groupname, this, 100, 0, 1e6 );
+    m_VinfEnd.SetDescript( "End of the Velocity Sweep When SweepByVinfFlag is Set" );
+    m_VinfNpts.Init( "VinfNpts", groupname, this, 1, 1, 100 );
+    m_VinfNpts.SetDescript( "Number of Points in the Velocity Sweep When SweepByVinfFlag is Set" );
     m_FluidUnitSystem.Init( "FluidUnitSystem", groupname, this, vsp::FLUID_UNIT_SI, vsp::FLUID_UNIT_ENGLISH, vsp::FLUID_UNIT_SI );
     m_FluidUnitSystem.SetDescript( "Unit System the Fluid Preset Density is Filled In As (English: slug/ft^3, SI: kg/m^3).  Does Not Convert Vinf, Sref, or Geometry -- Keep the Whole Model Consistent With This Choice Manually" );
     m_Rho.Init( "Rho", groupname, this, FluidTypeToRho( vsp::FLUID_SALT_WATER, vsp::FLUID_UNIT_SI, 0.0023769 ), 0, 1e3 );
     m_Rho.SetDescript( "Freestream Density.  Used to Calculate Propeller or Actuator Disk Coefficients and to Dimensionalize Forces and Moments.  Set to a Fluid Density (e.g. Fresh or Salt Water) for Hydrodynamic Analyses" );
+    m_KinematicVisc.Init( "KinematicVisc", groupname, this, FluidTypeToNu( vsp::FLUID_SALT_WATER, vsp::FLUID_UNIT_SI ), 0, 1e3 );
+    m_KinematicVisc.SetDescript( "Freestream Kinematic Viscosity.  Used With Vinf and Cref to Compute ReCref When SweepByVinfFlag is Set, and to Recover Each Sweep Point's True Velocity for Dimensionalizing Its Forces/Moments" );
     m_FluidType.Init( "FluidType", groupname, this, vsp::FLUID_SALT_WATER, vsp::FLUID_AIR, vsp::FLUID_CUSTOM );
-    m_FluidType.SetDescript( "Freestream Fluid Preset.  Air, Fresh Water, and Salt Water Fill In a Standard Rho; Custom Leaves Rho as a Free Input" );
+    m_FluidType.SetDescript( "Freestream Fluid Preset.  Air, Fresh Water, and Salt Water Fill In a Standard Rho and KinematicVisc; Custom Leaves Both as Free Inputs" );
     m_Vref.Init( "Vref", groupname, this, 100, 0, 1e12 );
     m_Vref.SetDescript( "Reference Velocity. Set to Rotor Tip Speed for Hover Analysis (Vinf = 0)" );
     m_ManualVrefFlag.Init( "ManualVrefFlag", groupname, this, false, false, true );
@@ -534,9 +569,13 @@ void VSPAEROMgrSingleton::Renew()
 
     // Other Setup Parameters );
     m_Vinf.Set( 100 );
+    m_SweepByVinfFlag.Set( true );
+    m_VinfEnd.Set( 100 );
+    m_VinfNpts.Set( 1 );
     m_FluidType.Set( vsp::FLUID_SALT_WATER );
     m_FluidUnitSystem.Set( vsp::FLUID_UNIT_SI );
     m_Rho.Set( FluidTypeToRho( m_FluidType(), m_FluidUnitSystem() ) );
+    m_KinematicVisc.Set( FluidTypeToNu( m_FluidType(), m_FluidUnitSystem() ) );
     m_Vref.Set( 100 );
     m_ManualVrefFlag.Set( false );
 
@@ -1926,6 +1965,18 @@ void VSPAEROMgrSingleton::GetSweepVectors( vector<double> &alphaVec, vector<doub
     double recrefEnd = m_ReCrefEnd.Get();
     int recrefNpts = m_ReCrefNpts.Get();
 
+    // When sweeping by Vinf, ReCref is derived from Velocity * Cref / KinematicVisc for each
+    // point of the Vinf sweep, instead of being set directly -- this is what lets Vinf (and thus
+    // the flow condition you actually care about, e.g. "20 kts") drive the solver, rather than
+    // requiring you to hand-compute a Reynolds number range yourself.
+    double nu = m_KinematicVisc();
+    if ( m_SweepByVinfFlag() && nu > 1e-12 && m_cref() > 1e-12 )
+    {
+        recrefStart = m_Vinf() * m_cref() / nu;
+        recrefEnd = m_VinfEnd() * m_cref() / nu;
+        recrefNpts = m_VinfNpts();
+    }
+
     // Calculate spacing
     double alphaDelta = 0.0;
     if ( alphaNpts > 1 )
@@ -2327,39 +2378,49 @@ Units follow whatever consistent length/mass/time system Rho, Vref, and the refe
 in -- e.g. SI (kg, m, s) inputs yield Newtons and Newton-meters, Imperial (slug, ft, s) inputs
 yield pounds-force and foot-pounds.  Set Rho to a water density (rather than the default sea
 level air density) to get dimensional hydrofoil forces.
+
+velVec supplies the actual velocity for each entry of the coefficient vectors: pass a single-
+element vector to use one constant velocity for the whole set (e.g. one case's wake-iteration
+history, which is all one flight condition), or a full-length vector to give each entry its own
+velocity (e.g. one row per alpha/beta/mach/ReCref combination in a polar sweep, where ReCref --
+and so the real speed it represents -- can differ row to row).
 *******************************************************/
-void VSPAEROMgrSingleton::AddDimensionalForceMomentResults( Results * res, double sref, double bref, double cref, double rho, double vel,
+void VSPAEROMgrSingleton::AddDimensionalForceMomentResults( Results * res, double sref, double bref, double cref, double rho, const vector<double> &velVec,
         const vector<double> &cltot, const vector<double> &cdtot, const vector<double> &cstot,
         const vector<double> &cfxtot, const vector<double> &cfytot, const vector<double> &cfztot,
         const vector<double> &cmxtot, const vector<double> &cmytot, const vector<double> &cmztot )
 {
-    if ( !res )
+    if ( !res || velVec.empty() )
     {
         return;
     }
 
-    double q = 0.5 * rho * vel * vel; // Dynamic pressure
-    double qs = q * sref;
+    auto velAt = [&]( size_t i )
+    {
+        return ( velVec.size() == 1 ) ? velVec[0] : velVec[i];
+    };
 
-    auto scale = []( const vector<double> &c, double k )
+    auto scale = [&]( const vector<double> &c, double geomFactor )
     {
         vector<double> f( c.size() );
         for ( size_t i = 0; i < c.size(); i++ )
         {
-            f[i] = c[i] * k;
+            double v = velAt( i );
+            double q = 0.5 * rho * v * v; // Dynamic pressure at this entry's actual velocity
+            f[i] = c[i] * q * geomFactor;
         }
         return f;
     };
 
-    res->Add( new NameValData( "FLift", scale( cltot, qs ), "Dimensional lift force.  FLift = CLtot * 0.5*Rho*Vref^2*Sref." ) );
-    res->Add( new NameValData( "FDrag", scale( cdtot, qs ), "Dimensional drag force.  FDrag = CDtot * 0.5*Rho*Vref^2*Sref." ) );
-    res->Add( new NameValData( "FSide", scale( cstot, qs ), "Dimensional side force.  FSide = CStot * 0.5*Rho*Vref^2*Sref." ) );
-    res->Add( new NameValData( "Fx", scale( cfxtot, qs ), "Dimensional X force." ) );
-    res->Add( new NameValData( "Fy", scale( cfytot, qs ), "Dimensional Y force." ) );
-    res->Add( new NameValData( "Fz", scale( cfztot, qs ), "Dimensional Z force." ) );
-    res->Add( new NameValData( "Mx", scale( cmxtot, qs * bref ), "Dimensional X (roll) moment." ) );
-    res->Add( new NameValData( "My", scale( cmytot, qs * cref ), "Dimensional Y (pitch) moment." ) );
-    res->Add( new NameValData( "Mz", scale( cmztot, qs * bref ), "Dimensional Z (yaw) moment." ) );
+    res->Add( new NameValData( "FLift", scale( cltot, sref ), "Dimensional lift force.  FLift = CLtot * 0.5*Rho*V^2*Sref." ) );
+    res->Add( new NameValData( "FDrag", scale( cdtot, sref ), "Dimensional drag force.  FDrag = CDtot * 0.5*Rho*V^2*Sref." ) );
+    res->Add( new NameValData( "FSide", scale( cstot, sref ), "Dimensional side force.  FSide = CStot * 0.5*Rho*V^2*Sref." ) );
+    res->Add( new NameValData( "Fx", scale( cfxtot, sref ), "Dimensional X force." ) );
+    res->Add( new NameValData( "Fy", scale( cfytot, sref ), "Dimensional Y force." ) );
+    res->Add( new NameValData( "Fz", scale( cfztot, sref ), "Dimensional Z force." ) );
+    res->Add( new NameValData( "Mx", scale( cmxtot, sref * bref ), "Dimensional X (roll) moment." ) );
+    res->Add( new NameValData( "My", scale( cmytot, sref * cref ), "Dimensional Y (pitch) moment." ) );
+    res->Add( new NameValData( "Mz", scale( cmztot, sref * bref ), "Dimensional Z (yaw) moment." ) );
 }
 
 /*******************************************************
@@ -2648,12 +2709,24 @@ void VSPAEROMgrSingleton::ReadHistoryFile( const string &filename, vector <strin
                 if ( ( nvd = res->FindPtr( "FC_Rho_" ) ) )  rho  = nvd->GetDouble( 0 );
                 if ( ( nvd = res->FindPtr( "FC_Vinf_" ) ) ) vinf = nvd->GetDouble( 0 );
 
-                // Vinf = 0 for hover/static analyses; fall back to the reference velocity used to
-                // non-dimensionalize that case (VSPAEROMgr keeps m_Vref == m_Vinf unless the user has
-                // set a manual reference velocity).
-                double vel = ( std::abs( vinf ) > 1e-8 ) ? vinf : m_Vref();
+                // Prefer recovering this specific case's actual velocity from the Reynolds number it
+                // was actually solved at (recref * KinematicVisc / Cref) -- essential whenever ReCref
+                // was swept (directly, or derived from a Vinf sweep), since every case in that sweep
+                // shares the same constant FC_Vinf_ echoed in the case header even though each one
+                // represents a different real speed. Falls back to Vinf/Vref (e.g. Vinf = 0 for
+                // hover/static analyses, or KinematicVisc unavailable) when ReCref isn't usable.
+                double nu = m_KinematicVisc();
+                double vel;
+                if ( nu > 1e-12 && cref > 1e-12 && recref > 1e-12 )
+                {
+                    vel = recref * nu / cref;
+                }
+                else
+                {
+                    vel = ( std::abs( vinf ) > 1e-8 ) ? vinf : m_Vref();
+                }
 
-                AddDimensionalForceMomentResults( res, sref, bref, cref, rho, vel,
+                AddDimensionalForceMomentResults( res, sref, bref, cref, rho, vector<double>{ vel },
                         CLtot, CDtot, CStot, CFxtot, CFytot, CFztot, CMxtot, CMytot, CMztot );
             }
 
@@ -2960,11 +3033,27 @@ void VSPAEROMgrSingleton::ReadPolarFile( const string &filename, vector <string>
                     res->Add( new NameValData( "Ew", E, "Oswald efficiency factor using wake formulation." ) );
                     res->Add( new NameValData( "StallFactor", StallFactor, "Stall factor." ) );
 
-                    // Sref, Bref, Cref, Rho, and Vinf are fixed for the whole sweep (VSPAERO is run
-                    // once per polar, not once per alpha/beta/mach point), so the live VSPAEROMgr
-                    // Parms are the correct flight condition for every row here.
-                    double vel = ( std::abs( m_Vinf() ) > 1e-8 ) ? m_Vinf() : m_Vref();
-                    AddDimensionalForceMomentResults( res, m_Sref(), m_bref(), m_cref(), m_Rho(), vel,
+                    // Sref, Bref, Cref, and Rho are fixed for the whole sweep (VSPAERO is run once
+                    // per polar, not once per alpha/beta/mach/ReCref point), so the live VSPAEROMgr
+                    // Parms are correct for every row.  Velocity is not, though: each row can carry
+                    // a different ReCref (directly swept, or derived from a Vinf sweep), so recover
+                    // each row's actual velocity from its solved Reynolds number rather than reusing
+                    // one constant Vinf for the whole sweep.
+                    double nu = m_KinematicVisc();
+                    double fallback_vel = ( std::abs( m_Vinf() ) > 1e-8 ) ? m_Vinf() : m_Vref();
+                    vector<double> velVec( Re_1e6.size() );
+                    for ( size_t i = 0; i < Re_1e6.size(); i++ )
+                    {
+                        if ( nu > 1e-12 && m_cref() > 1e-12 && Re_1e6[i] > 1e-12 )
+                        {
+                            velVec[i] = Re_1e6[i] * 1e6 * nu / m_cref();
+                        }
+                        else
+                        {
+                            velVec[i] = fallback_vel;
+                        }
+                    }
+                    AddDimensionalForceMomentResults( res, m_Sref(), m_bref(), m_cref(), m_Rho(), velVec,
                             CLtot, CDtot, CStot, CFxtot, CFytot, CFztot, CMxtot, CMytot, CMztot );
 
                     // Add results at the end to keep new VSPAERO_HIstory results together in the CSV export
@@ -3982,6 +4071,83 @@ void VSPAEROMgrSingleton::LoadDrawObjs( vector < DrawObj* > & draw_obj_vec )
 
         m_CpSliceVec[i]->LoadDrawObj( draw_obj_vec, i, highlight );
     }
+
+    LoadForceVectorDrawObj( draw_obj_vec );
+}
+
+/*******************************************************
+Draw the most recent VSPAERO run's total dimensional force (Fx, Fy, Fz) as an arrow from the CG,
+like Flow5/XFLR5's force vector display.  Looks at the latest VSPAERO_Polar result if one exists
+(taking its last row -- the final point of whatever sweep was run), falling back to the latest
+VSPAERO_History result (a single, non-swept case) otherwise.
+*******************************************************/
+void VSPAEROMgrSingleton::LoadForceVectorDrawObj( vector < DrawObj* > & draw_obj_vec )
+{
+    if ( !m_ShowForceVectorFlag() )
+    {
+        return;
+    }
+
+    string resid = ResultsMgr.FindLatestResultsID( "VSPAERO_Polar" );
+    if ( resid.empty() )
+    {
+        resid = ResultsMgr.FindLatestResultsID( "VSPAERO_History" );
+    }
+    if ( resid.empty() )
+    {
+        return;
+    }
+
+    Results* res = ResultsMgr.FindResultsPtr( resid );
+    if ( !res )
+    {
+        return;
+    }
+
+    NameValData *fx_ptr = res->FindPtr( "Fx" );
+    NameValData *fy_ptr = res->FindPtr( "Fy" );
+    NameValData *fz_ptr = res->FindPtr( "Fz" );
+    if ( !fx_ptr || !fy_ptr || !fz_ptr ||
+         fx_ptr->GetDoubleData().empty() || fy_ptr->GetDoubleData().empty() || fz_ptr->GetDoubleData().empty() )
+    {
+        return;
+    }
+
+    // Last entry -- the final row of a sweep, or the converged end of a single case's wake history.
+    vec3d f( fx_ptr->GetDoubleData().back(), fy_ptr->GetDoubleData().back(), fz_ptr->GetDoubleData().back() );
+
+    double fmag = f.mag();
+    if ( fmag < 1e-12 )
+    {
+        return;
+    }
+
+    vec3d dir = f * ( 1.0 / fmag );
+    vec3d cg( m_Xcg(), m_Ycg(), m_Zcg() );
+    double len = fmag * m_ForceVectorScale();
+    vec3d tip = cg + dir * len;
+
+    // Simple arrowhead: two short strokes back from the tip, offset to either side of the shaft.
+    vec3d ref = ( std::abs( dir.z() ) < 0.9 ) ? vec3d( 0, 0, 1 ) : vec3d( 1, 0, 0 );
+    vec3d side = cross( dir, ref );
+    if ( side.mag() > 1e-12 )
+    {
+        side.normalize();
+    }
+    double head_len = len * 0.2;
+    vec3d head_back = tip - dir * head_len;
+    vec3d head1 = head_back + side * ( head_len * 0.5 );
+    vec3d head2 = head_back - side * ( head_len * 0.5 );
+
+    m_ForceVectorDrawObj.m_Screen = DrawObj::VSP_MAIN_SCREEN;
+    m_ForceVectorDrawObj.m_GeomID = "VSPAEROForceVector_" + m_ID;
+    m_ForceVectorDrawObj.m_LineWidth = 3.0;
+    m_ForceVectorDrawObj.m_LineColor = vec3d( 1.0, 0.45, 0.0 ); // Orange -- distinct from selection/highlight red
+    m_ForceVectorDrawObj.m_Type = DrawObj::VSP_LINES;
+    m_ForceVectorDrawObj.m_PntVec = { cg, tip, tip, head1, tip, head2 };
+    m_ForceVectorDrawObj.m_GeomChanged = true;
+
+    draw_obj_vec.push_back( &m_ForceVectorDrawObj );
 }
 
 void VSPAEROMgrSingleton::UpdateBBox( vector < DrawObj* > & draw_obj_vec )
@@ -4794,6 +4960,7 @@ void VSPAEROMgrSingleton::UpdateParmRestrictions()
     if ( m_FluidType() != vsp::FLUID_CUSTOM )
     {
         m_Rho.Set( FluidTypeToRho( m_FluidType(), m_FluidUnitSystem() ) );
+        m_KinematicVisc.Set( FluidTypeToNu( m_FluidType(), m_FluidUnitSystem() ) );
     }
 
     if ( NumUnsteadyRotorGroups() == 0 )

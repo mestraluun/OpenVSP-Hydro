@@ -265,7 +265,7 @@ VSPAEROScreen::VSPAEROScreen( ScreenMgr* mgr ) : TabScreen( mgr, VSPAERO_SCREEN_
     // Flow Condition
     m_RightColumnLayout.AddSubGroupLayout( m_FlowCondLayout,
         m_RightColumnLayout.GetW(),
-        4 * m_RightColumnLayout.GetStdHeight() +
+        6 * m_RightColumnLayout.GetStdHeight() +
         m_RightColumnLayout.GetDividerHeight() );
     m_RightColumnLayout.AddY( m_FlowCondLayout.GetH() );
 
@@ -279,6 +279,13 @@ VSPAEROScreen::VSPAEROScreen( ScreenMgr* mgr ) : TabScreen( mgr, VSPAERO_SCREEN_
     m_FlowCondLayout.AddInputEvenSpacedVector( m_BetaStartInput, m_BetaEndInput, m_BetaNptsInput, "Beta", "%7.3f" );
     m_FlowCondLayout.AddInputEvenSpacedVector( m_MachStartInput, m_MachEndInput, m_MachNptsInput, "Mach", "%7.3f" );
     m_FlowCondLayout.AddInputEvenSpacedVector( m_ReCrefStartInput, m_ReCrefEndInput, m_ReCrefNptsInput, "ReCref", "%g" );
+
+    // Sweeping by Velocity derives ReCref (above) from Vinf/VinfEnd/VinfNpts, the reference chord,
+    // and the selected fluid's kinematic viscosity (see VSPAEROMgrSingleton::GetSweepVectors) --
+    // set a speed range (e.g. 10-20 kts, converted to your model's units) instead of hand-computing
+    // a Reynolds number range. ReCref above becomes read-only while this is on.
+    m_FlowCondLayout.AddButton( m_SweepByVinfToggle, "Sweep by Velocity (derive ReCref from Vinf)" );
+    m_FlowCondLayout.AddInputEvenSpacedVector( m_VinfStartInput, m_VinfEndInput, m_VinfNptsInput, "Vinf", "%7.3f" );
 
     m_RightColumnLayout.AddYGap();
     // Reference Quantities
@@ -531,36 +538,36 @@ VSPAEROScreen::VSPAEROScreen( ScreenMgr* mgr ) : TabScreen( mgr, VSPAERO_SCREEN_
     m_PropAndStabLayout.ForceNewLine();
 
     // Advanced Flow
-    m_AdvancedRightLayout.AddSubGroupLayout( m_FlowCondLayout,
+    m_AdvancedRightLayout.AddSubGroupLayout( m_AdvancedFlowLayout,
                                              m_AdvancedRightLayout.GetW(),
-                                             6 * m_AdvancedRightLayout.GetStdHeight() +
+                                             8 * m_AdvancedRightLayout.GetStdHeight() +
                                              m_AdvancedRightLayout.GetDividerHeight() +
                                              m_AdvancedRightLayout.GetGapHeight() );
-    m_AdvancedRightLayout.AddY( m_FlowCondLayout.GetH() );
+    m_AdvancedRightLayout.AddY( m_AdvancedFlowLayout.GetH() );
     m_AdvancedRightLayout.AddYGap();
 
-    m_FlowCondLayout.AddDividerBox( "Advanced Flow Conditions" );
-    m_FlowCondLayout.AddSlider( m_VinfSlider, "Vinf", 100, "%7.2f" );
+    m_AdvancedFlowLayout.AddDividerBox( "Advanced Flow Conditions" );
+    m_AdvancedFlowLayout.AddSlider( m_VinfSlider, "Vinf", 100, "%7.2f" );
 
-    m_FlowCondLayout.SetSameLineFlag( true );
-    m_FlowCondLayout.SetFitWidthFlag( false );
+    m_AdvancedFlowLayout.SetSameLineFlag( true );
+    m_AdvancedFlowLayout.SetFitWidthFlag( false );
 
-    button_width = m_FlowCondLayout.GetButtonWidth();
-    m_FlowCondLayout.SetButtonWidth( togglewidth );
-    m_FlowCondLayout.AddButton( m_ActivateVRefToggle, "" );
-    m_FlowCondLayout.SetButtonWidth( button_width - togglewidth );
-    m_FlowCondLayout.SetFitWidthFlag( true );
-    m_FlowCondLayout.AddSlider( m_VRefSlider, "VRef", 100, "%7.2f" );
-    m_FlowCondLayout.ForceNewLine();
-    m_FlowCondLayout.SetButtonWidth( button_width );
+    button_width = m_AdvancedFlowLayout.GetButtonWidth();
+    m_AdvancedFlowLayout.SetButtonWidth( togglewidth );
+    m_AdvancedFlowLayout.AddButton( m_ActivateVRefToggle, "" );
+    m_AdvancedFlowLayout.SetButtonWidth( button_width - togglewidth );
+    m_AdvancedFlowLayout.SetFitWidthFlag( true );
+    m_AdvancedFlowLayout.AddSlider( m_VRefSlider, "VRef", 100, "%7.2f" );
+    m_AdvancedFlowLayout.ForceNewLine();
+    m_AdvancedFlowLayout.SetButtonWidth( button_width );
 
-    m_FlowCondLayout.SetSameLineFlag( false );
-    m_FlowCondLayout.AddSlider( m_MachRefSlider, "MachRef", 1000, "%7.3g" );
+    m_AdvancedFlowLayout.SetSameLineFlag( false );
+    m_AdvancedFlowLayout.AddSlider( m_MachRefSlider, "MachRef", 1000, "%7.3g" );
 
-    m_FlowCondLayout.AddYGap();
+    m_AdvancedFlowLayout.AddYGap();
 
-    m_FlowCondLayout.SetChoiceButtonWidth( m_FlowCondLayout.GetButtonWidth() );
-    m_FlowCondLayout.AddChoice( m_FluidTypeChoice, "Fluid" );
+    m_AdvancedFlowLayout.SetChoiceButtonWidth( m_AdvancedFlowLayout.GetButtonWidth() );
+    m_AdvancedFlowLayout.AddChoice( m_FluidTypeChoice, "Fluid" );
     m_FluidTypeChoice.AddItem( "Air (Sea Level)", vsp::FLUID_AIR );
     m_FluidTypeChoice.AddItem( "Fresh Water", vsp::FLUID_FRESH_WATER );
     m_FluidTypeChoice.AddItem( "Salt Water", vsp::FLUID_SALT_WATER );
@@ -568,14 +575,32 @@ VSPAEROScreen::VSPAEROScreen( ScreenMgr* mgr ) : TabScreen( mgr, VSPAERO_SCREEN_
     m_FluidTypeChoice.UpdateItems();
 
     // OpenVSP has no model-wide unit system, so this tells the Fluid presets above whether to
-    // fill Rho in as slug/ft^3 (English) or kg/m^3 (SI) -- keep it matched to whatever units the
-    // rest of your model (Vinf, geometry, Sref, ...) is built in.
-    m_FlowCondLayout.AddChoice( m_FluidUnitSystemChoice, "Fluid Units" );
+    // fill Rho/KinematicVisc in as English (slug/ft^3, ft^2/s) or SI (kg/m^3, m^2/s) -- keep it
+    // matched to whatever units the rest of your model (Vinf, geometry, Sref, ...) is built in.
+    m_AdvancedFlowLayout.AddChoice( m_FluidUnitSystemChoice, "Fluid Units" );
     m_FluidUnitSystemChoice.AddItem( "English (slug/ft^3)", vsp::FLUID_UNIT_ENGLISH );
     m_FluidUnitSystemChoice.AddItem( "SI (kg/m^3)", vsp::FLUID_UNIT_SI );
     m_FluidUnitSystemChoice.UpdateItems();
 
-    m_FlowCondLayout.AddSlider( m_RhoSlider, "Rho", 1, "%2.5g" );
+    m_AdvancedFlowLayout.AddSlider( m_RhoSlider, "Rho", 1, "%2.5g" );
+    m_AdvancedFlowLayout.AddSlider( m_KinematicViscSlider, "KinematicVisc", 1, "%2.5g" );
+
+    m_AdvancedFlowLayout.AddYGap();
+
+    // Draws the latest run's total force (Fx, Fy, Fz) as an arrow from the CG in the 3D view,
+    // like Flow5/XFLR5's force vector display. Scale converts Force -> on-screen length; tune it
+    // so the arrow is a sensible size relative to the model.
+    m_AdvancedFlowLayout.SetSameLineFlag( true );
+    m_AdvancedFlowLayout.SetFitWidthFlag( false );
+    button_width = m_AdvancedFlowLayout.GetButtonWidth();
+    m_AdvancedFlowLayout.SetButtonWidth( togglewidth );
+    m_AdvancedFlowLayout.AddButton( m_ShowForceVectorToggle, "" );
+    m_AdvancedFlowLayout.SetButtonWidth( button_width - togglewidth );
+    m_AdvancedFlowLayout.SetFitWidthFlag( true );
+    m_AdvancedFlowLayout.AddSlider( m_ForceVectorScaleSlider, "Force Vector Scale", 1, "%2.5g" );
+    m_AdvancedFlowLayout.ForceNewLine();
+    m_AdvancedFlowLayout.SetButtonWidth( button_width );
+    m_AdvancedFlowLayout.SetSameLineFlag( false );
 
     int CpBrowserHeight = 75;
     m_AdvancedRightLayout.AddSubGroupLayout( m_CpSlicerLayout,
@@ -1917,6 +1942,33 @@ void VSPAEROScreen::UpdateFlowConditionDevices()
     {
         m_ReCrefEndInput.Activate();
     }
+
+    // Sweep by Velocity -- when on, ReCref (above) is derived from this instead, so grey it out.
+    m_SweepByVinfToggle.Update( VSPAEROMgr.m_SweepByVinfFlag.GetID() );
+    m_VinfStartInput.Update( VSPAEROMgr.m_Vinf.GetID() );
+    m_VinfEndInput.Update( VSPAEROMgr.m_VinfEnd.GetID() );
+    m_VinfNptsInput.Update( VSPAEROMgr.m_VinfNpts.GetID() );
+
+    if ( VSPAEROMgr.m_SweepByVinfFlag() )
+    {
+        m_VinfStartInput.Activate();
+        m_VinfNptsInput.Activate();
+        m_VinfEndInput.Activate();
+        if ( VSPAEROMgr.m_VinfNpts.Get() == 1 )
+        {
+            m_VinfEndInput.Deactivate();
+        }
+
+        m_ReCrefStartInput.Deactivate();
+        m_ReCrefEndInput.Deactivate();
+        m_ReCrefNptsInput.Deactivate();
+    }
+    else
+    {
+        m_VinfStartInput.Deactivate();
+        m_VinfEndInput.Deactivate();
+        m_VinfNptsInput.Deactivate();
+    }
 }
 
 void VSPAEROScreen::UpdateVSPAEROButtons()
@@ -2092,6 +2144,17 @@ void VSPAEROScreen::UpdateOtherSetupParms()
     m_FluidTypeChoice.Update( VSPAEROMgr.m_FluidType.GetID() );
     m_FluidUnitSystemChoice.Update( VSPAEROMgr.m_FluidUnitSystem.GetID() );
     m_RhoSlider.Update( VSPAEROMgr.m_Rho.GetID() );
+    m_KinematicViscSlider.Update( VSPAEROMgr.m_KinematicVisc.GetID() );
+    m_ShowForceVectorToggle.Update( VSPAEROMgr.m_ShowForceVectorFlag.GetID() );
+    m_ForceVectorScaleSlider.Update( VSPAEROMgr.m_ForceVectorScale.GetID() );
+    if ( VSPAEROMgr.m_ShowForceVectorFlag() )
+    {
+        m_ForceVectorScaleSlider.Activate();
+    }
+    else
+    {
+        m_ForceVectorScaleSlider.Deactivate();
+    }
     m_ActivateVRefToggle.Update( VSPAEROMgr.m_ManualVrefFlag.GetID() );
     m_VRefSlider.Update( VSPAEROMgr.m_Vref.GetID() );
     m_MachRefSlider.Update( VSPAEROMgr.m_Machref.GetID() );
@@ -2122,7 +2185,8 @@ void VSPAEROScreen::UpdateOtherSetupParms()
         m_StabilityTypeChoice.Activate();
     }
 
-    if ( VSPAEROMgr.m_PropBladesMode() != vsp::VSPAERO_PROP_STATIC ||
+    if ( VSPAEROMgr.m_SweepByVinfFlag() ||
+         VSPAEROMgr.m_PropBladesMode() != vsp::VSPAERO_PROP_STATIC ||
        ( VSPAEROMgr.m_StabilityType.Get() >= vsp::STABILITY_P_ANALYSIS && VSPAEROMgr.m_StabilityType.Get() <= vsp::STABILITY_R_ANALYSIS ) )
     {
         m_ReCrefNptsInput.Deactivate();
@@ -2139,15 +2203,17 @@ void VSPAEROScreen::UpdateOtherSetupParms()
     m_FluidTypeChoice.Activate();
     m_FluidUnitSystemChoice.Activate();
 
-    // Rho is only directly editable when a Custom fluid is selected; Air/Fresh Water/Salt Water
-    // fill it in automatically (see VSPAEROMgrSingleton::UpdateParmRestrictions).
+    // Rho/KinematicVisc are only directly editable when a Custom fluid is selected; Air/Fresh
+    // Water/Salt Water fill them in automatically (see VSPAEROMgrSingleton::UpdateParmRestrictions).
     if ( VSPAEROMgr.m_FluidType() == vsp::FLUID_CUSTOM )
     {
         m_RhoSlider.Activate();
+        m_KinematicViscSlider.Activate();
     }
     else
     {
         m_RhoSlider.Deactivate();
+        m_KinematicViscSlider.Deactivate();
     }
 
     // VRef/MachRef manual override remains a propeller/rotor/hover-specific concept (Vref is used
