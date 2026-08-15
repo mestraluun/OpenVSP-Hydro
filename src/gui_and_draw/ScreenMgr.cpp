@@ -92,6 +92,13 @@ ScreenMgr::ScreenMgr( Vehicle* vPtr )
     MessageBase::Register( string( "ScreenMgr" ) );
 
     Fl::scheme( "GTK+" );
+
+    // OpenVSP-Hydro: tint the default gray GTK+ scheme blue so this fork is visually
+    // distinguishable at a glance from stock OpenVSP.
+    Fl::background( 213, 226, 240 );    // Panel/group background
+    Fl::background2( 240, 246, 253 );   // Input/text/browser field background
+    Fl::set_color( FL_SELECTION_COLOR, 61, 118, 189 );
+
     Fl::add_timeout( UPDATE_TIME, StaticTimerCB, this );
     Fl::add_handler( GlobalHandler );
 
