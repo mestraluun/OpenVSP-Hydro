@@ -1666,6 +1666,19 @@ enum VSPAERO_FLUID_TYPE { FLUID_AIR,	/*!< Air at sea level, standard day (0.0023
 /*!
 	\ingroup Enumerations
 */
+/*! Enum for which unit system a VSPAERO_FLUID_TYPE preset density is filled in as.  OpenVSP does
+    not enforce a model-wide unit system, so this tells the Air/Fresh Water/Salt Water presets
+    whether to write Rho in English (slug/ft^3, matching a ft/lbf/s model) or SI (kg/m^3, matching
+    a m/kg/s model) units -- it does not convert or affect anything else (Vinf, Sref, geometry,
+    etc still must be kept consistent with this choice manually). */
+enum VSPAERO_FLUID_UNIT_SYSTEM { FLUID_UNIT_ENGLISH,	/*!< Fluid presets given in slug/ft^3 */
+                                 FLUID_UNIT_SI,	/*!< Fluid presets given in kg/m^3 */
+                                 FLUID_UNIT_NUM_SYSTEMS	/*!< Number of fluid preset unit systems */
+};
+
+/*!
+	\ingroup Enumerations
+*/
 /*! Enum that is used to describe surfaces in CFD Mesh. */
 enum VSP_SURF_CFD_TYPE { CFD_NORMAL,	/*!< Normal CFD Mesh surface */
                          CFD_NEGATIVE,	/*!< Negative volume CFD Mesh surface */

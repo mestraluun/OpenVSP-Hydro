@@ -533,7 +533,7 @@ VSPAEROScreen::VSPAEROScreen( ScreenMgr* mgr ) : TabScreen( mgr, VSPAERO_SCREEN_
     // Advanced Flow
     m_AdvancedRightLayout.AddSubGroupLayout( m_FlowCondLayout,
                                              m_AdvancedRightLayout.GetW(),
-                                             5 * m_AdvancedRightLayout.GetStdHeight() +
+                                             6 * m_AdvancedRightLayout.GetStdHeight() +
                                              m_AdvancedRightLayout.GetDividerHeight() +
                                              m_AdvancedRightLayout.GetGapHeight() );
     m_AdvancedRightLayout.AddY( m_FlowCondLayout.GetH() );
@@ -566,6 +566,14 @@ VSPAEROScreen::VSPAEROScreen( ScreenMgr* mgr ) : TabScreen( mgr, VSPAERO_SCREEN_
     m_FluidTypeChoice.AddItem( "Salt Water", vsp::FLUID_SALT_WATER );
     m_FluidTypeChoice.AddItem( "Custom", vsp::FLUID_CUSTOM );
     m_FluidTypeChoice.UpdateItems();
+
+    // OpenVSP has no model-wide unit system, so this tells the Fluid presets above whether to
+    // fill Rho in as slug/ft^3 (English) or kg/m^3 (SI) -- keep it matched to whatever units the
+    // rest of your model (Vinf, geometry, Sref, ...) is built in.
+    m_FlowCondLayout.AddChoice( m_FluidUnitSystemChoice, "Fluid Units" );
+    m_FluidUnitSystemChoice.AddItem( "English (slug/ft^3)", vsp::FLUID_UNIT_ENGLISH );
+    m_FluidUnitSystemChoice.AddItem( "SI (kg/m^3)", vsp::FLUID_UNIT_SI );
+    m_FluidUnitSystemChoice.UpdateItems();
 
     m_FlowCondLayout.AddSlider( m_RhoSlider, "Rho", 1, "%2.5g" );
 
@@ -2082,6 +2090,7 @@ void VSPAEROScreen::UpdateOtherSetupParms()
 {
     m_VinfSlider.Update( VSPAEROMgr.m_Vinf.GetID() );
     m_FluidTypeChoice.Update( VSPAEROMgr.m_FluidType.GetID() );
+    m_FluidUnitSystemChoice.Update( VSPAEROMgr.m_FluidUnitSystem.GetID() );
     m_RhoSlider.Update( VSPAEROMgr.m_Rho.GetID() );
     m_ActivateVRefToggle.Update( VSPAEROMgr.m_ManualVrefFlag.GetID() );
     m_VRefSlider.Update( VSPAEROMgr.m_Vref.GetID() );
@@ -2128,6 +2137,7 @@ void VSPAEROScreen::UpdateOtherSetupParms()
     // just propeller/rotor/stability runs, so they stay editable regardless of run mode.
     m_VinfSlider.Activate();
     m_FluidTypeChoice.Activate();
+    m_FluidUnitSystemChoice.Activate();
 
     // Rho is only directly editable when a Custom fluid is selected; Air/Fresh Water/Salt Water
     // fill it in automatically (see VSPAEROMgrSingleton::UpdateParmRestrictions).

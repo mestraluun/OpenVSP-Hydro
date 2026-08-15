@@ -431,6 +431,7 @@ public:
     Parm m_Vinf;
     Parm m_Rho;
     IntParm m_FluidType;
+    IntParm m_FluidUnitSystem;
     Parm m_Machref;
     Parm m_Vref;
     BoolParm m_ManualVrefFlag;
@@ -571,7 +572,7 @@ protected:
     static bool CheckForCaseHeader( const std::vector<string> &headerStr );
     static bool CheckForResultHeader( const std::vector < string > &headerstr );
     static int ReadVSPAEROCaseHeader( Results * res, FILE * fp );
-    static double FluidTypeToRho( int fluid_type, double custom_rho = 0.0023769 );
+    static double FluidTypeToRho( int fluid_type, int unit_system, double custom_rho = 0.0023769 );
     static void AddDimensionalForceMomentResults( Results * res, double sref, double bref, double cref, double rho, double vel,
             const vector<double> &cltot, const vector<double> &cdtot, const vector<double> &cstot,
             const vector<double> &cfxtot, const vector<double> &cfytot, const vector<double> &cfztot,

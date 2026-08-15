@@ -36,19 +36,23 @@ VspAeroControlSurf::VspAeroControlSurf()
     iReflect = false;
 }
 
-// Standard freestream densities (consistent with the slug/ft^3, ft, s units these VSPAEROMgr
-// defaults have always used) for the FLUID_AIR/FLUID_FRESH_WATER/FLUID_SALT_WATER presets.
-// FLUID_CUSTOM returns the density unchanged so a manually-set Rho is left alone.
-double VSPAEROMgrSingleton::FluidTypeToRho( int fluid_type, double custom_rho )
+// Standard freestream densities for the FLUID_AIR/FLUID_FRESH_WATER/FLUID_SALT_WATER presets, in
+// either English (slug/ft^3, matching a ft/lbf/s model) or SI (kg/m^3, matching a m/kg/s model)
+// units -- OpenVSP has no model-wide unit system, so the caller's m_FluidUnitSystem selection is
+// what determines which of these gets written into Rho.  FLUID_CUSTOM returns the density
+// unchanged so a manually-set Rho is left alone.
+double VSPAEROMgrSingleton::FluidTypeToRho( int fluid_type, int unit_system, double custom_rho )
 {
+    bool si = ( unit_system == vsp::FLUID_UNIT_SI );
+
     switch ( fluid_type )
     {
         case vsp::FLUID_AIR:
-            return 0.0023769; // Sea level, standard day
+            return si ? 1.225 : 0.0023769; // Sea level, standard day
         case vsp::FLUID_FRESH_WATER:
-            return 1.94;
+            return si ? 1000.0 : 1.94;
         case vsp::FLUID_SALT_WATER:
-            return 1.99;
+            return si ? 1025.0 : 1.99;
         case vsp::FLUID_CUSTOM:
         default:
             return custom_rho;
@@ -235,7 +239,9 @@ VSPAEROMgrSingleton::VSPAEROMgrSingleton() : ParmContainer()
     // Other Setup Parameters
     m_Vinf.Init( "Vinf", groupname, this, 100, 0, 1e6 );
     m_Vinf.SetDescript( "Freestream Velocity Through Propeller or Actuator Disk or for Stability Analysis" );
-    m_Rho.Init( "Rho", groupname, this, FluidTypeToRho( vsp::FLUID_SALT_WATER, 0.0023769 ), 0, 1e3 );
+    m_FluidUnitSystem.Init( "FluidUnitSystem", groupname, this, vsp::FLUID_UNIT_SI, vsp::FLUID_UNIT_ENGLISH, vsp::FLUID_UNIT_SI );
+    m_FluidUnitSystem.SetDescript( "Unit System the Fluid Preset Density is Filled In As (English: slug/ft^3, SI: kg/m^3).  Does Not Convert Vinf, Sref, or Geometry -- Keep the Whole Model Consistent With This Choice Manually" );
+    m_Rho.Init( "Rho", groupname, this, FluidTypeToRho( vsp::FLUID_SALT_WATER, vsp::FLUID_UNIT_SI, 0.0023769 ), 0, 1e3 );
     m_Rho.SetDescript( "Freestream Density.  Used to Calculate Propeller or Actuator Disk Coefficients and to Dimensionalize Forces and Moments.  Set to a Fluid Density (e.g. Fresh or Salt Water) for Hydrodynamic Analyses" );
     m_FluidType.Init( "FluidType", groupname, this, vsp::FLUID_SALT_WATER, vsp::FLUID_AIR, vsp::FLUID_CUSTOM );
     m_FluidType.SetDescript( "Freestream Fluid Preset.  Air, Fresh Water, and Salt Water Fill In a Standard Rho; Custom Leaves Rho as a Free Input" );
@@ -529,7 +535,8 @@ void VSPAEROMgrSingleton::Renew()
     // Other Setup Parameters );
     m_Vinf.Set( 100 );
     m_FluidType.Set( vsp::FLUID_SALT_WATER );
-    m_Rho.Set( FluidTypeToRho( m_FluidType() ) );
+    m_FluidUnitSystem.Set( vsp::FLUID_UNIT_SI );
+    m_Rho.Set( FluidTypeToRho( m_FluidType(), m_FluidUnitSystem() ) );
     m_Vref.Set( 100 );
     m_ManualVrefFlag.Set( false );
 
@@ -4786,7 +4793,7 @@ void VSPAEROMgrSingleton::UpdateParmRestrictions()
 
     if ( m_FluidType() != vsp::FLUID_CUSTOM )
     {
-        m_Rho.Set( FluidTypeToRho( m_FluidType() ) );
+        m_Rho.Set( FluidTypeToRho( m_FluidType(), m_FluidUnitSystem() ) );
     }
 
     if ( NumUnsteadyRotorGroups() == 0 )
