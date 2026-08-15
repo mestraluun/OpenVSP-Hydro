@@ -2123,32 +2123,36 @@ void VSPAEROScreen::UpdateOtherSetupParms()
         m_ReCrefNptsInput.Activate();
     }
 
-    bool flow_cond_relevant = ( VSPAEROMgr.m_PropBladesMode() != vsp::VSPAERO_PROP_STATIC ||
-                                 VSPAEROMgr.ExistRotorDisk() ||
-                               ( VSPAEROMgr.m_StabilityType.Get() > vsp::STABILITY_OFF && VSPAEROMgr.m_StabilityType.Get() < vsp::STABILITY_PITCH ) );
-
-    if ( flow_cond_relevant )
-    {
-        m_VinfSlider.Activate();
-        m_ActivateVRefToggle.Activate();
-        m_FluidTypeChoice.Activate();
-    }
-    else
-    {
-        m_VinfSlider.Deactivate();
-        m_ActivateVRefToggle.Deactivate();
-        m_FluidTypeChoice.Deactivate();
-    }
+    // Vinf, Rho, and Fluid always matter now -- they set the dynamic pressure used to
+    // dimensionalize every result's forces/moments (see AddDimensionalForceMomentResults), not
+    // just propeller/rotor/stability runs, so they stay editable regardless of run mode.
+    m_VinfSlider.Activate();
+    m_FluidTypeChoice.Activate();
 
     // Rho is only directly editable when a Custom fluid is selected; Air/Fresh Water/Salt Water
     // fill it in automatically (see VSPAEROMgrSingleton::UpdateParmRestrictions).
-    if ( flow_cond_relevant && VSPAEROMgr.m_FluidType() == vsp::FLUID_CUSTOM )
+    if ( VSPAEROMgr.m_FluidType() == vsp::FLUID_CUSTOM )
     {
         m_RhoSlider.Activate();
     }
     else
     {
         m_RhoSlider.Deactivate();
+    }
+
+    // VRef/MachRef manual override remains a propeller/rotor/hover-specific concept (Vref is used
+    // in place of Vinf for nondimensionalizing static/hover cases where Vinf = 0).
+    bool flow_cond_relevant = ( VSPAEROMgr.m_PropBladesMode() != vsp::VSPAERO_PROP_STATIC ||
+                                 VSPAEROMgr.ExistRotorDisk() ||
+                               ( VSPAEROMgr.m_StabilityType.Get() > vsp::STABILITY_OFF && VSPAEROMgr.m_StabilityType.Get() < vsp::STABILITY_PITCH ) );
+
+    if ( flow_cond_relevant )
+    {
+        m_ActivateVRefToggle.Activate();
+    }
+    else
+    {
+        m_ActivateVRefToggle.Deactivate();
     }
 }
 
