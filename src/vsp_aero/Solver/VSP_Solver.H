@@ -242,7 +242,23 @@ private:
     int FreezeMultiPoleAtIteration_;
     int DoSymmetryPlaneSolve_;
 
-    int Preconditioner_;    
+    // Sign of the z=0 image system: +1 rigid ground plane, -1 free surface.
+    // See the ImagePlaneSign() accessor for the full description.
+
+    int ImagePlaneSign_;
+
+    // Applies the image-plane sign convention to an induced-velocity contribution that has
+    // already been evaluated at the mirrored (z -> -z) point and had its normal component
+    // negated.  A rigid ground plane (ImagePlaneSign_ = +1) leaves it untouched, so the
+    // historical ground-effect path is bit-for-bit unchanged; a free surface
+    // (ImagePlaneSign_ = -1) negates the whole image contribution, which is exactly the
+    // opposite-sign image.  Only the three velocity components are touched -- callers pass
+    // arrays of differing length (q[3] on the vortex/adjoint paths, q[5] on the rotor-disk
+    // and engine-face paths), so indices beyond 2 must not be assumed to exist.
+
+    void ApplyImagePlaneSign(double q[]) { q[0] *= ImagePlaneSign_; q[1] *= ImagePlaneSign_; q[2] *= ImagePlaneSign_; };
+
+    int Preconditioner_;
     int UpdateMatrixPreconditioner_;
     int UseWakeNodeMatrixPreconditioner_;
         
@@ -2592,8 +2608,23 @@ public:
     void ReadFile(char *FileName) { snprintf(FileName_,sizeof(FileName_)*sizeof(char),"%s",FileName);  VSPGeom_.DoSymmetryPlaneSolve() = DoSymmetryPlaneSolve_ ; VSPGeom_.ReadFile(FileName); };
 
     /** Turn on ground effects analysis **/
-    
+
     int &DoGroundEffectsAnalysis(void) { return VSPGeom_.DoGroundEffectsAnalysis(); };
+
+    /** Sign of the z=0 reflection plane's image system.
+     *
+     *  +1 (default): rigid ground plane -- the image carries the SAME sign as the real
+     *  singularity, enforcing zero normal velocity through z=0.  This is classic ground
+     *  effect and is the historical VSPAERO behavior.
+     *
+     *  -1: free surface in the infinite-Froude (high-speed / zero-gravity) limit -- the
+     *  image carries the OPPOSITE sign, enforcing zero perturbation potential on z=0.
+     *  This is the same approximation as AVL's Zsym = -1.  It captures the static image
+     *  effect of a free surface but NOT wave making, so it has no Froude-number
+     *  dependence; expect it to under-predict the magnitude of the free-surface effect
+     *  at the finite Froude numbers typical of hydrofoil operation. **/
+
+    int &ImagePlaneSign(void) { return ImagePlaneSign_; };
     
     /** Set the vehicle rotation vector (r1,r2,r3 **/
     

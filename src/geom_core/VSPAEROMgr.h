@@ -455,6 +455,7 @@ public:
     Parm m_FarDist;
     BoolParm m_GroundEffectToggle;
     Parm m_GroundEffect;
+    BoolParm m_FreeSurfaceToggle;
 
     IntParm m_PropBladesMode;
     IntParm m_StabilityType;

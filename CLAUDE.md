@@ -111,6 +111,23 @@ is not set; note the `_g`-suffixed target variants (`geom_api_g`, `apitest_g`, `
 graphics-enabled builds of otherwise headless libraries — see the `VSP_*_LIBRARIES*` sets near the bottom
 of `src/CMakeLists.txt` for exactly which libraries compose the GUI vs. headless vs. API-first link lines.
 
+### VSPAERO is a separate executable, not a library call
+
+This trips people up constantly. `VSPAEROMgr` (in `geom_core`) does **not** solve anything — it writes a
+`.vspaero` case file, forks the external `vspaero` binary (`m_SolverProcess.ForkCmd(...)`), and parses the
+solver's `.history` / `.polar` / `.lod` / `.group` output files back into `ResultsMgr`. It never sees a
+panel, a bound vortex, or a matrix. The actual solve lives in `src/vsp_aero/Solver/` (~104k lines;
+`VSP_Solver.C` alone is 36k) and is **matrix-free preconditioned GMRES with fast-multipole acceleration** —
+there is no assembled AIC matrix anywhere. Anything that needs to touch influence coefficients has to go
+into the solver and be expressible in a matrix-free, multipole-compatible form; options are passed to it as
+**command-line flags** (see the `args` list in `VSPAEROMgrSingleton::ComputeSolver`), not case-file entries.
+
+**Fork-specific solver modification:** `src/vsp_aero/` is otherwise vendored upstream code, but this fork
+adds a free-surface image option to it — `ImagePlaneSign_` in `VSP_Solver.H/.C` (+1 rigid ground plane,
+−1 free surface), applied via `ApplyImagePlaneSign()` at the 38 `DoGroundEffectsAnalysis()` reflection
+sites, plus a `-freesurface` flag in `vspaero.C`. The default (+1) is a no-op, so ground effect is
+bit-for-bit unchanged. Keep this in mind when merging upstream VSPAERO updates.
+
 ### Core data model (`src/geom_core`)
 
 - **`Vehicle`** (`Vehicle.h/.cpp`) is the root object: owns the tree of `Geom` objects, global settings,

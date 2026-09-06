@@ -59,11 +59,38 @@
     this fork is visually distinguishable from stock OpenVSP at a
     glance.
 
-  None of this touches VSPAERO's solver itself, the geometry/parametric
-  model, or file format -- `.vsp3` files remain fully compatible with
-  official OpenVSP, and everything above is additive (existing
-  coefficient-based results, the C++/Python API, and AngelScript
-  scripting all work exactly as before).
+  - **Free surface (infinite-Froude).**  A `Free Surface at z = 0`
+    toggle makes VSPAERO reflect the flow about the z = 0 plane with an
+    *opposite-sign* image, which enforces constant perturbation
+    potential on that plane -- the linearized free-surface condition in
+    the infinite-Froude limit, and the same approximation as AVL's
+    `Zsym = -1`.  Stock VSPAERO already had the *same-sign* image
+    (ground effect, the zero-Froude limit); this adds the opposite sign
+    and reuses the rest of that machinery unchanged, so with the toggle
+    off the ground-effect path is bit-for-bit identical.  Model z = 0 is
+    taken to be the undisturbed waterline and the geometry is used
+    exactly where it sits, so submergence is set by positioning the
+    model.  Its limits are worth stating plainly:
+      - It is a *static image only* -- there is no wave making, so
+        results have no Froude-number dependence.  Expect it to be
+        directionally right but to under-predict: for a representative
+        hydrofoil case (0.75 m chord, 4.5 m span, 1.5 m submergence,
+        4 deg, 20 kt, Fnh ~2.7), the image method gives about
+        dCL = -3.3% / dCDi = +3.2%, where a gravity-inclusive
+        free-surface VLM gives roughly -9.6% / +16.8%.
+      - It is limited to a **single flow condition** (no alpha, beta,
+        Mach, ReCref or velocity sweeps).  Like ground effect, it bakes
+        the flow condition into the geometry by rotating the vehicle so
+        the reflection plane stays horizontal, so a sweep would only be
+        geometrically correct at its first point.
+      - It is mutually exclusive with ground effect (both drive the same
+        z = 0 plane, with opposite image signs).
+
+  Apart from the free-surface image, none of this touches VSPAERO's
+  solver, the geometry/parametric model, or the file format -- `.vsp3`
+  files remain fully compatible with official OpenVSP, and everything
+  above is additive (existing coefficient-based results, the C++/Python
+  API, and AngelScript scripting all work exactly as before).
 
 ### LICENSE
 

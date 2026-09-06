@@ -432,7 +432,7 @@ VSPAEROScreen::VSPAEROScreen( ScreenMgr* mgr ) : TabScreen( mgr, VSPAERO_SCREEN_
     // Other Setup Parms Layout
     m_AdvancedLeftLayout.AddSubGroupLayout( m_OtherParmsLayout,
         m_AdvancedLeftLayout.GetW(),
-        13 * m_AdvancedLeftLayout.GetStdHeight() +
+        14 * m_AdvancedLeftLayout.GetStdHeight() +
          5 * m_AdvancedLeftLayout.GetDividerHeight() +
          4 * m_AdvancedLeftLayout.GetGapHeight() );
     m_AdvancedLeftLayout.AddY( m_OtherParmsLayout.GetH() );
@@ -471,6 +471,17 @@ VSPAEROScreen::VSPAEROScreen( ScreenMgr* mgr ) : TabScreen( mgr, VSPAERO_SCREEN_
 
     m_OtherParmsLayout.AddSlider( m_GroundEffectSlider, "Z Above Gnd.", 1e3, "%7.2f" );
     m_OtherParmsLayout.ForceNewLine();
+
+    // Free surface takes no height -- model z = 0 is the waterline, so the geometry is used
+    // where it sits.  Mutually exclusive with ground effect above (same reflection plane,
+    // opposite image sign), and restricted to a single flow condition.
+    m_OtherParmsLayout.SetSameLineFlag( false );
+    m_OtherParmsLayout.SetFitWidthFlag( true );
+    m_OtherParmsLayout.SetButtonWidth( button_width );
+    m_OtherParmsLayout.AddButton( m_FreeSurfaceToggle, "Free Surface at z = 0 (infinite Froude)" );
+    m_OtherParmsLayout.SetSameLineFlag( true );
+    m_OtherParmsLayout.SetFitWidthFlag( false );
+
     m_OtherParmsLayout.AddYGap();
 
     m_OtherParmsLayout.SetSameLineFlag( false );
@@ -1839,6 +1850,19 @@ void VSPAEROScreen::UpdateAdvancedTabDevices()
     m_FarDistSlider.Update( VSPAEROMgr.m_FarDist.GetID() );
     m_GroundEffectToggle.Update( VSPAEROMgr.m_GroundEffectToggle.GetID() );
     m_GroundEffectSlider.Update( VSPAEROMgr.m_GroundEffect.GetID() );
+    m_FreeSurfaceToggle.Update( VSPAEROMgr.m_FreeSurfaceToggle.GetID() );
+
+    // Both drive the same z = 0 reflection plane, so only one can be active
+    // (UpdateParmRestrictions clears ground effect when free surface is on).
+    if ( VSPAEROMgr.m_FreeSurfaceToggle() )
+    {
+        m_GroundEffectToggle.Deactivate();
+        m_GroundEffectSlider.Deactivate();
+    }
+    else
+    {
+        m_GroundEffectToggle.Activate();
+    }
 
     m_FreezeMultiPoleAtIterationSlider.Update( VSPAEROMgr.m_FreezeMultiPoleAtIteration.GetID() );
     m_ForwardGMRESConvergenceFactorSlider.Update( VSPAEROMgr.m_ForwardGMRESConvergenceFactor.GetID() );

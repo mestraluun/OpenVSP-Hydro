@@ -308,6 +308,9 @@ VSPAEROMgrSingleton::VSPAEROMgrSingleton() : ParmContainer()
     m_GroundEffect.SetDescript( "Ground Effect Distance" );
     m_GroundEffectToggle.Init( "GroundEffectToggle", groupname, this, false, false, true );
 
+    m_FreeSurfaceToggle.Init( "FreeSurfaceToggle", groupname, this, false, false, true );
+    m_FreeSurfaceToggle.SetDescript( "Model a Free Surface at Model z = 0 (the Undisturbed Waterline) in the Infinite-Froude Limit.  Reflects the Flow About z = 0 With an Opposite-Sign Image, Equivalent to AVL's Zsym = -1.  Captures the Static Image Effect Only -- No Wave Making, So No Froude Number Dependence.  Mutually Exclusive With Ground Effect, and Limited to a Single Flow Condition" );
+
     m_PropBladesMode.Init( "m_PropBladesMode", groupname, this, vsp::VSPAERO_PROP_STATIC, vsp::VSPAERO_PROP_STATIC, vsp::VSPAERO_PROP_NUM_MODES - 1 );
     m_PropBladesMode.SetDescript( "Mode for VSPAERO treatment of prop/rotor blades." );
 
@@ -527,6 +530,7 @@ void VSPAEROMgrSingleton::Renew()
     m_StallModel.Set( vsp::STALL_OFF );
     m_GroundEffectToggle.Set( false );
     m_GroundEffect.Set( -1 );
+    m_FreeSurfaceToggle.Set( false );
     m_FromSteadyState.Set( false );
     m_NumWakeNodes.Set( 8 );
 
@@ -2214,6 +2218,15 @@ string VSPAEROMgrSingleton::ComputeSolver( FILE * logFile )
         {
             args.emplace_back( "-groundheight" );
             args.push_back( StringUtil::double_to_string( m_GroundEffect(), "%f" ) );
+        }
+
+        // Free surface takes no height -- the geometry is used where it sits, with model
+        // z = 0 as the undisturbed waterline.  UpdateParmRestrictions keeps this mutually
+        // exclusive with ground effect, since both drive the same z = 0 reflection plane.
+
+        if ( m_FreeSurfaceToggle() )
+        {
+            args.emplace_back( "-freesurface" );
         }
 
 
@@ -4968,14 +4981,29 @@ void VSPAEROMgrSingleton::UpdateParmRestrictions()
         m_PropBladesMode.Set( vsp::VSPAERO_PROP_STATIC );
     }
 
-    if ( m_PropBladesMode() != vsp::VSPAERO_PROP_STATIC ||
-         m_GroundEffectToggle() )
+    // Ground effect and free surface both drive the same z = 0 reflection plane, differing
+    // only in the sign of the image, so they cannot both be active.  Free surface wins,
+    // since on this fork it is the more likely intent.
+
+    if ( m_FreeSurfaceToggle() )
     {
-        // Only 1 flow condition supported for unsteady analysis and ground effect calculations
+        m_GroundEffectToggle.Set( false );
+    }
+
+    if ( m_PropBladesMode() != vsp::VSPAERO_PROP_STATIC ||
+         m_GroundEffectToggle() ||
+         m_FreeSurfaceToggle() )
+    {
+        // Only 1 flow condition supported for unsteady analysis, ground effect, and free
+        // surface calculations.  All three bake the flow condition into the geometry (the
+        // vehicle is rotated by AoA so the reflection plane stays horizontal), so a sweep
+        // would only be geometrically correct at its first point.  This also pins the
+        // velocity sweep, which drives ReCref.
         m_AlphaNpts.Set( 1 );
         m_BetaNpts.Set( 1 );
         m_MachNpts.Set( 1 );
         m_ReCrefNpts.Set( 1 );
+        m_VinfNpts.Set( 1 );
         m_StabilityType.Set( vsp::STABILITY_OFF );
     }
 }
