@@ -52,6 +52,7 @@ DesignVarMgr.cpp
 EllipsoidGeom.cpp
 FeaStructure.cpp
 FitModelMgr.cpp
+FreeSurfaceVLM.cpp
 FuselageGeom.cpp
 GearGeom.cpp
 Geom.cpp
@@ -138,6 +139,7 @@ EllipsoidGeom.h
 FeaStructure.h
 FemaleGeomDataReduced.h
 FitModelMgr.h
+FreeSurfaceVLM.h
 FuselageGeom.h
 GearGeom.h
 Geom.h
