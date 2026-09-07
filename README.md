@@ -86,6 +86,27 @@
       - It is mutually exclusive with ground effect (both drive the same
         z = 0 plane, with opposite image signs).
 
+  - **Free surface with wave making (finite Froude).**  A separate
+    `FreeSurfaceVLM` analysis, independent of VSPAERO, solves a submerged
+    lifting surface with the gravity-dependent free-surface influence
+    included.  Because the free-surface term depends on
+    `kappa0 = g/U^2`, the result varies with Froude number and includes
+    the downstream wave system and its drag -- the physics the
+    infinite-Froude image above cannot represent.  At the representative
+    condition (0.75 m chord, 4.5 m span, 1.5 m submergence, 4 deg,
+    20 kt, Fnh ~2.7) it gives dCL = -9.6% and dCDi = +16.8%, against
+    -3.3% / +3.2% for the image method.  Run it from the Results Manager,
+    the Python API, or AngelScript as the analysis named
+    `FreeSurfaceVLM`; inputs are `Span`, `Chord`, `Submergence`,
+    `Alpha`, `Vinf`, `Rho`, `NumSpanPanels`, `NumQuadPoints` and
+    `FreeSurfaceFlag`.  Two limits are worth knowing:
+      - It models a straight flat-plate surface from span/chord/
+        submergence, and does not yet read OpenVSP geometry, so taper,
+        twist and camber are not represented.
+      - Linear free-surface theory degrades near the surface; below
+        about 1.5 chords of submergence the solver returns a warning
+        alongside the result rather than a silent number.
+
   Apart from the free-surface image, none of this touches VSPAERO's
   solver, the geometry/parametric model, or the file format -- `.vsp3`
   files remain fully compatible with official OpenVSP, and everything

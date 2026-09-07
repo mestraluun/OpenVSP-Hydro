@@ -64,6 +64,11 @@ Tests run via CTest, registered from `src/test/` (included from the bottom of `s
 - **`AreaProj`**, **`TestChordAdjust`**, **`RoutingGeom`** (`src/test/scripttest/`) — run `.vspscript`
   files through the headless `vspscript` executable to exercise the AngelScript API end-to-end.
 - **`dba_test`** (`src/test/dba_test/`) — standalone delabella-triangulation smoke-test executable.
+- **`FreeSurfaceVLM`** (`src/test/fsvlm_test/`) — regression for the free-surface VLM
+  (`src/geom_core/FreeSurfaceVLM.{h,cpp}`): exponential integral, Gauss-Legendre quadrature,
+  deep-submergence decay, the submergence sweep, and the shallow-water validity warning. It
+  compiles `FreeSurfaceVLM.cpp` directly rather than linking `geom_core`, because that solver is
+  deliberately dependency-free; keep it that way so the test stays fast and isolated.
 
 Run from the build directory:
 
