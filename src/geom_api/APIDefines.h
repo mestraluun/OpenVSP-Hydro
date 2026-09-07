@@ -1038,6 +1038,7 @@ enum GUI_VSP_SCREEN { VSP_ADV_LINK_SCREEN,	/*!< Advanced linking screen */
                       VSP_VSPAERO_SCREEN,	/*!< VSPAERO screen */
                       VSP_XSEC_SCREEN,	/*!< XSec screen */
                       VSP_WAVEDRAG_SCREEN,	/*!< Wave drag screen */
+                      VSP_HYDROVLM_SCREEN,	/*!< HydroVLM hydrofoil analysis screen */
                       VSP_MAIN_SCREEN,   /*!< Main screen */ // Leave at end of list, helps draw after update.
                       VSP_NUM_SCREENS,	/*!< Number of screens */
                       VSP_ALL_SCREENS   /*!< Flag for all screens */
