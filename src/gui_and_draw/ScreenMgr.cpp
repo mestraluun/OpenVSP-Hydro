@@ -72,6 +72,7 @@
 #include "VehNotesScreen.h"
 #include "VSPAEROPlotScreen.h"
 #include "VSPAEROScreen.h"
+#include "HydroVLMScreen.h"
 #include "WaveDragScreen.h"
 
 #include "MainThreadIDMgr.h"
@@ -989,6 +990,7 @@ void ScreenMgr::Init()
     m_ScreenVec[vsp::VSP_VAR_PRESET_SCREEN] = new VarPresetEditorScreen( this );
     m_ScreenVec[vsp::VSP_VSPAERO_PLOT_SCREEN] = new VSPAEROPlotScreen( this );
     m_ScreenVec[vsp::VSP_VSPAERO_SCREEN] = new VSPAEROScreen( this );
+    m_ScreenVec[vsp::VSP_HYDROVLM_SCREEN] = new HydroVLMScreen( this );
     m_ScreenVec[vsp::VSP_WAVEDRAG_SCREEN] = new WaveDragScreen( this );
     m_ScreenVec[vsp::VSP_XSEC_SCREEN] = new XSecViewScreen( this );
 

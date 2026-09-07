@@ -177,6 +177,7 @@ MainVSPScreen::MainVSPScreen( ScreenMgr* mgr ) : ActionScreen( mgr )
     m_AeroStructMenuItem.Init( mgr, m_MenuBar, "Analysis/Structure/Aero Structural...", vsp::VSP_AERO_STRUCT_SCREEN );
 
     m_VSPAEROMenuItem.Init( mgr, m_MenuBar, "Analysis/Aero/VSPAERO...", vsp::VSP_VSPAERO_SCREEN );
+    m_HydroVLMMenuItem.Init( mgr, m_MenuBar, "Analysis/Aero/HydroVLM...", vsp::VSP_HYDROVLM_SCREEN );
     m_WaveDragMenuItem.Init( mgr, m_MenuBar, "Analysis/Aero/Wave Drag...", vsp::VSP_WAVEDRAG_SCREEN );
     m_ParasiteDragMenuItem.Init( mgr, m_MenuBar, "Analysis/Aero/Parasite Drag...", vsp::VSP_PARASITE_DRAG_SCREEN );
 

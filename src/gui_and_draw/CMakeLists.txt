@@ -57,6 +57,7 @@ GeometryAnalysisScreen.cpp
 GroupLayout.cpp
 GuiDevice.cpp
 HingeScreen.cpp
+HydroVLMScreen.cpp
 HumanGeomScreen.cpp
 IGESOptionsScreen.cpp
 IGESStructureOptionsScreen.cpp
@@ -151,6 +152,7 @@ GeometryAnalysisScreen.h
 GroupLayout.h
 GuiDevice.h
 HingeScreen.h
+HydroVLMScreen.h
 HumanGeomScreen.h
 IGESOptionsScreen.h
 IGESStructureOptionsScreen.h
