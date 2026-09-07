@@ -25,10 +25,18 @@ public:
 protected:
     GroupLayout m_MainLayout;
     GroupLayout m_BorderLayout;
+    StringInput m_SpanInput;
+    StringInput m_ChordInput;
+    StringInput m_SubmergenceInput;
+    StringInput m_AlphaInput;
+    StringInput m_VinfInput;
+    StringInput m_RhoInput;
+    StringInput m_GravityInput;
+    StringInput m_SpanPanelsInput;
+    StringInput m_QuadPointsInput;
     StringOutput m_StatusOutput;
-    StringOutput m_SurfaceOutput;
-    StringOutput m_ModelOutput;
     TriggerButton m_RunButton;
+    string m_LastStatus;
 };
 
 #endif
