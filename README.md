@@ -13,6 +13,106 @@
   released as an open source project under the NOSA 1.3 license.  The
   first open source version was 2.0.0.
 
+### OPENVSP-HYDRO -- DIFFERENCES FROM OFFICIAL OPENVSP
+
+  OpenVSP-Hydro is a fork of official OpenVSP adapted for hydrofoil /
+  marine hydrodynamic analysis with VSPAERO, on top of an otherwise
+  unmodified OpenVSP.  Official OpenVSP is aimed at aircraft, and its
+  VSPAERO analysis reports lift/drag/moment purely as non-dimensional
+  coefficients (CL, CD, CMx, ...) -- fine for aircraft work, but not
+  what a hydrofoil engineer usually wants.  The changes here are:
+
+  - **Dimensional forces and moments.**  Every VSPAERO run now also
+    reports `FLift`, `FDrag`, `FSide`, `Fx`, `Fy`, `Fz`, `Mx`, `My`,
+    `Mz` alongside the usual coefficients, computed as
+    `F = C * 0.5*Rho*V^2*Sref` (and the equivalent for moments) --
+    the same formula VSPAERO's own solver uses internally, applied
+    here as a results post-process.  These show up automatically in
+    the Results Manager, the sweep/plot browsers, and the Python API;
+    no new API calls are needed to get them.
+
+  - **Freestream fluid presets.**  A `Fluid` selector (Air / Fresh
+    Water / Salt Water / Custom) on the VSPAERO Advanced Flow
+    Conditions panel fills in `Rho` (and `KinematicVisc`, see below)
+    automatically.  Since OpenVSP has no model-wide unit system, a
+    paired `Fluid Units` selector (English: slug/ft^3, or SI: kg/m^3)
+    controls which unit convention the presets are filled in with --
+    it does not convert your geometry, `Vinf`, or `Sref`, which you
+    must still keep consistent yourself.  Defaults to Salt Water, SI.
+
+  - **Velocity-driven sweeps.**  A `Sweep by Velocity` toggle lets a
+    run be specified as a speed range (e.g. 10-20 kts, converted to
+    your model's units) instead of a Reynolds number range.  ReCref
+    is derived automatically per sweep point from `Vinf`, the
+    reference chord, and the selected fluid's kinematic viscosity.
+    Each sweep point's forces are dimensionalized using its own
+    actual velocity (recovered from its solved Reynolds number), not
+    one constant `Vinf` for the whole sweep -- this also fixes a case
+    official OpenVSP doesn't need to handle: multi-point ReCref sweeps
+    all sharing one echoed `Vinf` in the case file.
+
+  - **Force vector display.**  A `Show Force Vector` toggle draws the
+    latest run's total force as an arrow from the CG in the 3D view
+    (similar to Flow5/XFLR5), with an adjustable scale.
+
+  - **GUI color.**  The default gray GTK+ scheme is tinted blue so
+    this fork is visually distinguishable from stock OpenVSP at a
+    glance.
+
+  - **Free surface (infinite-Froude).**  A `Free Surface at z = 0`
+    toggle makes VSPAERO reflect the flow about the z = 0 plane with an
+    *opposite-sign* image, which enforces constant perturbation
+    potential on that plane -- the linearized free-surface condition in
+    the infinite-Froude limit, and the same approximation as AVL's
+    `Zsym = -1`.  Stock VSPAERO already had the *same-sign* image
+    (ground effect, the zero-Froude limit); this adds the opposite sign
+    and reuses the rest of that machinery unchanged, so with the toggle
+    off the ground-effect path is bit-for-bit identical.  Model z = 0 is
+    taken to be the undisturbed waterline and the geometry is used
+    exactly where it sits, so submergence is set by positioning the
+    model.  Its limits are worth stating plainly:
+      - It is a *static image only* -- there is no wave making, so
+        results have no Froude-number dependence.  Expect it to be
+        directionally right but to under-predict: for a representative
+        hydrofoil case (0.75 m chord, 4.5 m span, 1.5 m submergence,
+        4 deg, 20 kt, Fnh ~2.7), the image method gives about
+        dCL = -3.3% / dCDi = +3.2%, where a gravity-inclusive
+        free-surface VLM gives roughly -9.6% / +16.8%.
+      - It is limited to a **single flow condition** (no alpha, beta,
+        Mach, ReCref or velocity sweeps).  Like ground effect, it bakes
+        the flow condition into the geometry by rotating the vehicle so
+        the reflection plane stays horizontal, so a sweep would only be
+        geometrically correct at its first point.
+      - It is mutually exclusive with ground effect (both drive the same
+        z = 0 plane, with opposite image signs).
+
+  - **Free surface with wave making (finite Froude).**  A separate
+    `FreeSurfaceVLM` analysis, independent of VSPAERO, solves a submerged
+    lifting surface with the gravity-dependent free-surface influence
+    included.  Because the free-surface term depends on
+    `kappa0 = g/U^2`, the result varies with Froude number and includes
+    the downstream wave system and its drag -- the physics the
+    infinite-Froude image above cannot represent.  At the representative
+    condition (0.75 m chord, 4.5 m span, 1.5 m submergence, 4 deg,
+    20 kt, Fnh ~2.7) it gives dCL = -9.6% and dCDi = +16.8%, against
+    -3.3% / +3.2% for the image method.  Run it from the Results Manager,
+    the Python API, or AngelScript as the analysis named
+    `FreeSurfaceVLM`; inputs are `Span`, `Chord`, `Submergence`,
+    `Alpha`, `Vinf`, `Rho`, `NumSpanPanels`, `NumQuadPoints` and
+    `FreeSurfaceFlag`.  Two limits are worth knowing:
+      - It models a straight flat-plate surface from span/chord/
+        submergence, and does not yet read OpenVSP geometry, so taper,
+        twist and camber are not represented.
+      - Linear free-surface theory degrades near the surface; below
+        about 1.5 chords of submergence the solver returns a warning
+        alongside the result rather than a silent number.
+
+  Apart from the free-surface image, none of this touches VSPAERO's
+  solver, the geometry/parametric model, or the file format -- `.vsp3`
+  files remain fully compatible with official OpenVSP, and everything
+  above is additive (existing coefficient-based results, the C++/Python
+  API, and AngelScript scripting all work exactly as before).
+
 ### LICENSE
 
   OpenVSP is available under the terms of the NASA Open Source Agreement

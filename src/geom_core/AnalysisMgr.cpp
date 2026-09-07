@@ -14,6 +14,7 @@
 #endif
 
 #include "AnalysisMgr.h"
+#include "FreeSurfaceVLM.h"
 #include "Vehicle.h"
 #include "ProjectionMgr.h"
 #include "PropGeom.h"
@@ -621,6 +622,13 @@ void AnalysisMgrSingleton::RegisterBuiltins()
     if ( bem && !RegisterAnalysis( bem ) )
     {
         delete bem;
+    }
+
+    FreeSurfaceVLMAnalysis *fsa = new FreeSurfaceVLMAnalysis();
+
+    if ( fsa && !RegisterAnalysis( fsa ) )
+    {
+        delete fsa;
     }
 
     CompGeomAnalysis *cga = new CompGeomAnalysis();
@@ -3062,4 +3070,80 @@ string WaveDragAnalysis::Execute()
     }
 
     return res;
+}
+
+//======================================================================================//
+//================================ Free Surface VLM ====================================//
+//======================================================================================//
+
+FreeSurfaceVLMAnalysis::FreeSurfaceVLMAnalysis() : Analysis( "FreeSurfaceVLM",
+        "Vortex lattice analysis of a submerged lifting surface, including the "
+        "gravity-dependent free-surface (wave making) influence." )
+{
+}
+
+void FreeSurfaceVLMAnalysis::SetDefaults()
+{
+    fsvlm::Input d;
+
+    m_Inputs.Clear();
+    m_Inputs.Add( new NameValData( "Span", d.span, "Total span of the surface." ) );
+    m_Inputs.Add( new NameValData( "Chord", d.chord, "Chord of the surface (flat plate)." ) );
+    m_Inputs.Add( new NameValData( "Submergence", d.submergence, "Depth of the chord plane below the undisturbed free surface, positive." ) );
+    m_Inputs.Add( new NameValData( "Alpha", d.alpha_deg, "Angle of attack, degrees." ) );
+    m_Inputs.Add( new NameValData( "Vinf", d.U, "Freestream speed." ) );
+    m_Inputs.Add( new NameValData( "Rho", d.rho, "Fluid density." ) );
+    m_Inputs.Add( new NameValData( "Gravity", d.gravity, "Gravitational acceleration." ) );
+    m_Inputs.Add( new NameValData( "NumSpanPanels", d.n_span, "Number of spanwise panels." ) );
+    m_Inputs.Add( new NameValData( "NumQuadPoints", d.n_nu, "Gauss-Legendre points in the free-surface quadrature." ) );
+    m_Inputs.Add( new NameValData( "FreeSurfaceFlag", 1, "Include the free-surface (wave) influence.  Set to 0 for an unbounded solve." ) );
+    m_Inputs.Add( new NameValData( "CosineSpacing", 1, "Cluster span stations toward the tips." ) );
+}
+
+string FreeSurfaceVLMAnalysis::Execute()
+{
+    fsvlm::Input in;
+
+    NameValData *nvd = nullptr;
+
+    nvd = m_Inputs.FindPtr( "Span", 0 );          if ( nvd ) in.span        = nvd->GetDouble( 0 );
+    nvd = m_Inputs.FindPtr( "Chord", 0 );         if ( nvd ) in.chord       = nvd->GetDouble( 0 );
+    nvd = m_Inputs.FindPtr( "Submergence", 0 );   if ( nvd ) in.submergence = nvd->GetDouble( 0 );
+    nvd = m_Inputs.FindPtr( "Alpha", 0 );         if ( nvd ) in.alpha_deg   = nvd->GetDouble( 0 );
+    nvd = m_Inputs.FindPtr( "Vinf", 0 );          if ( nvd ) in.U           = nvd->GetDouble( 0 );
+    nvd = m_Inputs.FindPtr( "Rho", 0 );           if ( nvd ) in.rho         = nvd->GetDouble( 0 );
+    nvd = m_Inputs.FindPtr( "Gravity", 0 );       if ( nvd ) in.gravity     = nvd->GetDouble( 0 );
+    nvd = m_Inputs.FindPtr( "NumSpanPanels", 0 ); if ( nvd ) in.n_span      = nvd->GetInt( 0 );
+    nvd = m_Inputs.FindPtr( "NumQuadPoints", 0 ); if ( nvd ) in.n_nu        = nvd->GetInt( 0 );
+
+    nvd = m_Inputs.FindPtr( "FreeSurfaceFlag", 0 );
+    if ( nvd ) in.free_surface = ( nvd->GetInt( 0 ) != 0 );
+
+    nvd = m_Inputs.FindPtr( "CosineSpacing", 0 );
+    if ( nvd ) in.cosine_spacing = ( nvd->GetInt( 0 ) != 0 );
+
+    fsvlm::Result r = fsvlm::Solve( in );
+
+    Results *res = ResultsMgr.CreateResults( "FreeSurfaceVLM", "Free-surface VLM results." );
+
+    if ( !res )
+    {
+        return string();
+    }
+
+    res->Add( new NameValData( "Valid", r.valid ? 1 : 0, "Nonzero when the solve succeeded." ) );
+    res->Add( new NameValData( "Warning", r.warning, "Validity or input warning; empty when clean." ) );
+    res->Add( new NameValData( "CL", r.CL, "Lift coefficient." ) );
+    res->Add( new NameValData( "CD", r.CD, "Induced (plus wave, when the free surface is on) drag coefficient." ) );
+    res->Add( new NameValData( "FLift", r.L, "Dimensional lift force." ) );
+    res->Add( new NameValData( "FDrag", r.D, "Dimensional drag force." ) );
+    res->Add( new NameValData( "Sref", r.S, "Reference area, span * chord." ) );
+    res->Add( new NameValData( "Qinf", r.q, "Freestream dynamic pressure." ) );
+    res->Add( new NameValData( "FroudeChord", r.froude_chord, "Froude number on chord, U/sqrt(g*chord)." ) );
+    res->Add( new NameValData( "FroudeDepth", r.froude_depth, "Froude number on submergence, U/sqrt(g*h)." ) );
+    res->Add( new NameValData( "SubmergenceRatio", r.h_over_c, "Submergence to chord ratio." ) );
+    res->Add( new NameValData( "Y", r.y_mid, "Span station centres." ) );
+    res->Add( new NameValData( "Gamma", r.gamma, "Circulation per span station." ) );
+
+    return res->GetID();
 }

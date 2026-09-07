@@ -355,6 +355,10 @@ public:
     // Highlighter Methods and Variables
     static void HighlightSelected( int type );
     void LoadDrawObjs( vector < DrawObj* > & draw_obj_vec );
+    void LoadForceVectorDrawObj( vector < DrawObj* > & draw_obj_vec );
+
+    BoolParm m_ShowForceVectorFlag;
+    Parm m_ForceVectorScale;
 
     BoolParm m_CpSliceFlag;
 
@@ -429,7 +433,13 @@ public:
 
     // Other Setup Parameters
     Parm m_Vinf;
+    BoolParm m_SweepByVinfFlag;
+    Parm m_VinfEnd;
+    IntParm m_VinfNpts;
     Parm m_Rho;
+    Parm m_KinematicVisc;
+    IntParm m_FluidType;
+    IntParm m_FluidUnitSystem;
     Parm m_Machref;
     Parm m_Vref;
     BoolParm m_ManualVrefFlag;
@@ -445,6 +455,7 @@ public:
     Parm m_FarDist;
     BoolParm m_GroundEffectToggle;
     Parm m_GroundEffect;
+    BoolParm m_FreeSurfaceToggle;
 
     IntParm m_PropBladesMode;
     IntParm m_StabilityType;
@@ -570,12 +581,19 @@ protected:
     static bool CheckForCaseHeader( const std::vector<string> &headerStr );
     static bool CheckForResultHeader( const std::vector < string > &headerstr );
     static int ReadVSPAEROCaseHeader( Results * res, FILE * fp );
+    static double FluidTypeToRho( int fluid_type, int unit_system, double custom_rho = 0.0023769 );
+    static double FluidTypeToNu( int fluid_type, int unit_system, double custom_nu = 1.5723e-4 );
+    static void AddDimensionalForceMomentResults( Results * res, double sref, double bref, double cref, double rho, const vector<double> &velVec,
+            const vector<double> &cltot, const vector<double> &cdtot, const vector<double> &cstot,
+            const vector<double> &cfxtot, const vector<double> &cfytot, const vector<double> &cfztot,
+            const vector<double> &cmxtot, const vector<double> &cmytot, const vector<double> &cmztot );
     void ReadSetupFile(); // Read the VSPAERO setup file to identify VSPAERO inputs needed to generate existing VSPAERO results
     void ReadSliceFile( const string &filename, vector <string> &res_id_vector ) const;
     static void ReadGroupResFile( const string &filename, vector <string> &res_id_vector, const string &group_name = "" );
     static void ReadRotorResFile( const string &filename, vector <string> &res_id_vector, const string &group_name = "" );
 
     DrawObj m_HighlightDrawObj;
+    DrawObj m_ForceVectorDrawObj;
 
     BndBox m_BBox;
 

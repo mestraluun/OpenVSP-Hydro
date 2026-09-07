@@ -50,6 +50,10 @@ void VSP_SOLVER::init(void)
  
     DoSymmetryPlaneSolve_ = 0;
 
+    // Default to a rigid ground plane, preserving the historical ground-effect behavior.
+
+    ImagePlaneSign_ = 1;
+
     SearchID_ = NULL;
 
     SaveRestartFile_ = 0;
@@ -2378,7 +2382,7 @@ void VSP_SOLVER::Calculate_FreeStreamVelocity_From_Rotors_And_Engines_At_pXYZ(do
          
           RotorDisk(j).Velocity(xyz, q);      
     
-          q[2] *= -1.;
+          q[2] *= -1.;  ApplyImagePlaneSign(q);
           
           qp[0] += q[0];
           qp[1] += q[1];
@@ -2415,7 +2419,7 @@ void VSP_SOLVER::Calculate_FreeStreamVelocity_From_Rotors_And_Engines_At_pXYZ(do
              RotorDisk(j).Velocity(xyz, q);      
     
              q[1] *= -1.;
-             q[2] *= -1.;
+             q[2] *= -1.;  ApplyImagePlaneSign(q);
     
              qp[0] += q[0];
              qp[1] += q[1];
@@ -2455,7 +2459,7 @@ void VSP_SOLVER::Calculate_FreeStreamVelocity_From_Rotors_And_Engines_At_pXYZ(do
          
           EngineFace(j).Velocity(xyz, q);      
 
-          q[2] *= -1.;
+          q[2] *= -1.;  ApplyImagePlaneSign(q);
           
           qp[0] += q[0];
           qp[1] += q[1];
@@ -2492,7 +2496,7 @@ void VSP_SOLVER::Calculate_FreeStreamVelocity_From_Rotors_And_Engines_At_pXYZ(do
              EngineFace(j).Velocity(xyz, q);      
    
              q[1] *= -1.;
-             q[2] *= -1.;
+             q[2] *= -1.;  ApplyImagePlaneSign(q);
 
              qp[0] += q[0];
              qp[1] += q[1];
@@ -5681,7 +5685,7 @@ void VSP_SOLVER::CalculateGammaPerturbationLoopVelocities(void)
                   
                    VortexEdge->dInducedVelocity_dGamma(xyz, q);
             
-                   q[2] *= -1.;
+                   q[2] *= -1.;  ApplyImagePlaneSign(q);
                 
                    dU_dGamma += q[0];
                    dV_dGamma += q[1];
@@ -5714,7 +5718,7 @@ void VSP_SOLVER::CalculateGammaPerturbationLoopVelocities(void)
                       VortexEdge->dInducedVelocity_dGamma(xyz, q);
                
                       q[1] *= -1.;
-                      q[2] *= -1.;
+                      q[2] *= -1.;  ApplyImagePlaneSign(q);
       
                       dU_dGamma += q[0];
                       dV_dGamma += q[1];
@@ -5803,7 +5807,7 @@ void VSP_SOLVER::CalculateMeshPerturbationLoopVelocities(void)
                      
                       VortexEdge->dInducedVelocity_dMesh(xyz, dxyz_i, q);
                
-                      q[2] *= -1.;
+                      q[2] *= -1.;  ApplyImagePlaneSign(q);
      
                       dU_dMesh += q[0];
                       dV_dMesh += q[1];
@@ -5836,7 +5840,7 @@ void VSP_SOLVER::CalculateMeshPerturbationLoopVelocities(void)
                          VortexEdge->dInducedVelocity_dMesh(xyz, dxyz_i, q);
                   
                          q[1] *= -1.;
-                         q[2] *= -1.;
+                         q[2] *= -1.;  ApplyImagePlaneSign(q);
      
                          dU_dMesh += q[0];
                          dV_dMesh += q[1];
@@ -5917,7 +5921,7 @@ void VSP_SOLVER::CalculateGammaPerturbationEdgeVelocities(void)
                   
                    VortexEdge->dInducedVelocity_dGamma(xyz, q);        
          
-                   q[2] *= -1.;
+                   q[2] *= -1.;  ApplyImagePlaneSign(q);
                   
                    dU_dGamma += q[0];
                    dV_dGamma += q[1];
@@ -5952,7 +5956,7 @@ void VSP_SOLVER::CalculateGammaPerturbationEdgeVelocities(void)
                       VortexEdge->dInducedVelocity_dGamma(xyz, q);        
             
                       q[1] *= -1.;         
-                      q[2] *= -1.;
+                      q[2] *= -1.;  ApplyImagePlaneSign(q);
                      
                       dU_dGamma += q[0];
                       dV_dGamma += q[1];
@@ -6052,7 +6056,7 @@ void VSP_SOLVER::CalculateMeshPerturbationEdgeVelocities(void)
                   
                    VortexEdge->dInducedVelocity_dMesh(xyz, dxyz_i, q);
          
-                   q[2] *= -1.;                   
+                   q[2] *= -1.;  ApplyImagePlaneSign(q);                   
                   
                    dU_dMesh += q[0];
                    dV_dMesh += q[1];
@@ -6087,7 +6091,7 @@ void VSP_SOLVER::CalculateMeshPerturbationEdgeVelocities(void)
                       VortexEdge->dInducedVelocity_dMesh(xyz, dxyz_i, q);
             
                       q[1] *= -1.;         
-                      q[2] *= -1.;
+                      q[2] *= -1.;  ApplyImagePlaneSign(q);
 
                       dU_dMesh += q[0];
                       dV_dMesh += q[1];
@@ -6172,7 +6176,7 @@ void VSP_SOLVER::CalculateStallGammaPerturbationLoopVelocities(void)
                      
                       VortexEdge->dInducedVelocity_dStallGamma(xyz, q);
                
-                      q[2] *= -1.;
+                      q[2] *= -1.;  ApplyImagePlaneSign(q);
                    
                       dU_dStall += q[0];
                       dV_dStall += q[1];
@@ -6205,7 +6209,7 @@ void VSP_SOLVER::CalculateStallGammaPerturbationLoopVelocities(void)
                          VortexEdge->dInducedVelocity_dStallGamma(xyz, q);
                   
                          q[1] *= -1.;
-                         q[2] *= -1.;
+                         q[2] *= -1.;  ApplyImagePlaneSign(q);
          
                          dU_dStall += q[0];
                          dV_dStall += q[1];
@@ -6288,7 +6292,7 @@ void VSP_SOLVER::CalculateStallGammaPerturbationEdgeVelocities(void)
                      
                       VortexEdge->dInducedVelocity_dStallGamma(xyz, q);        
             
-                      q[2] *= -1.;
+                      q[2] *= -1.;  ApplyImagePlaneSign(q);
                      
                       dU_dStall += q[0];
                       dV_dStall += q[1];
@@ -6323,7 +6327,7 @@ void VSP_SOLVER::CalculateStallGammaPerturbationEdgeVelocities(void)
                          VortexEdge->dInducedVelocity_dStallGamma(xyz, q);        
                
                          q[1] *= -1.;         
-                         q[2] *= -1.;
+                         q[2] *= -1.;  ApplyImagePlaneSign(q);
                         
                          dU_dStall += q[0];
                          dV_dStall += q[1];
@@ -6410,7 +6414,7 @@ void VSP_SOLVER::CalculateVortexStretchingRatioGammaPerturbationLoopVelocities(v
                      
                       VortexEdge->dInducedVelocity_dVortexStretchingRatio(xyz, q);
                
-                      q[2] *= -1.;
+                      q[2] *= -1.;  ApplyImagePlaneSign(q);
                    
                       dU_dRatio += q[0];
                       dV_dRatio += q[1];
@@ -6443,7 +6447,7 @@ void VSP_SOLVER::CalculateVortexStretchingRatioGammaPerturbationLoopVelocities(v
                          VortexEdge->dInducedVelocity_dVortexStretchingRatio(xyz, q);
                   
                          q[1] *= -1.;
-                         q[2] *= -1.;
+                         q[2] *= -1.;  ApplyImagePlaneSign(q);
          
                          dU_dRatio += q[0];
                          dV_dRatio += q[1];
@@ -6526,7 +6530,7 @@ void VSP_SOLVER::CalculateVortexStretchingRatioGammaPerturbationEdgeVelocities(v
                      
                       VortexEdge->dInducedVelocity_dVortexStretchingRatio(xyz, q);        
             
-                      q[2] *= -1.;
+                      q[2] *= -1.;  ApplyImagePlaneSign(q);
                      
                       dU_dRatio += q[0];
                       dV_dRatio += q[1];
@@ -6561,7 +6565,7 @@ void VSP_SOLVER::CalculateVortexStretchingRatioGammaPerturbationEdgeVelocities(v
                          VortexEdge->dInducedVelocity_dVortexStretchingRatio(xyz, q);        
                
                          q[1] *= -1.;         
-                         q[2] *= -1.;
+                         q[2] *= -1.;  ApplyImagePlaneSign(q);
                         
                          dU_dRatio += q[0];
                          dV_dRatio += q[1];
@@ -7362,7 +7366,7 @@ void VSP_SOLVER::CalculateLoopVelocities(void)
                   
                    VortexEdge->InducedVelocity(xyz, q);        
          
-                   q[2] *= -1.;
+                   q[2] *= -1.;  ApplyImagePlaneSign(q);
                   
                    U += q[0];
                    V += q[1];
@@ -7397,7 +7401,7 @@ void VSP_SOLVER::CalculateLoopVelocities(void)
                       VortexEdge->InducedVelocity(xyz, q);        
             
                       q[1] *= -1.;         
-                      q[2] *= -1.;
+                      q[2] *= -1.;  ApplyImagePlaneSign(q);
                      
                       U += q[0];
                       V += q[1];
@@ -7588,7 +7592,7 @@ void VSP_SOLVER::CalculateEdgeVelocities(void)
                   
                    VortexEdge->InducedVelocity(xyz, q);        
          
-                   q[2] *= -1.;
+                   q[2] *= -1.;  ApplyImagePlaneSign(q);
                   
                    dU += q[0];
                    dV += q[1];
@@ -7623,7 +7627,7 @@ void VSP_SOLVER::CalculateEdgeVelocities(void)
                       VortexEdge->InducedVelocity(xyz, q);        
             
                       q[1] *= -1.;         
-                      q[2] *= -1.;
+                      q[2] *= -1.;  ApplyImagePlaneSign(q);
                      
                       dU += q[0];
                       dV += q[1];
@@ -22782,7 +22786,7 @@ void VSP_SOLVER::CalculateLoopMachPerturbationVelocities(void)
                   
                    VortexEdge->InducedVelocity(xyz, q);        
          
-                   q[2] *= -1.;
+                   q[2] *= -1.;  ApplyImagePlaneSign(q);
                   
                    U += q[0];
                    V += q[1];
@@ -22817,7 +22821,7 @@ void VSP_SOLVER::CalculateLoopMachPerturbationVelocities(void)
                       VortexEdge->InducedVelocity(xyz, q);        
             
                       q[1] *= -1.;         
-                      q[2] *= -1.;
+                      q[2] *= -1.;  ApplyImagePlaneSign(q);
                      
                       U += q[0];
                       V += q[1];
@@ -22908,7 +22912,7 @@ void VSP_SOLVER::CalculateEdgeMachPerturbationVelocities(void)
                
                 VortexEdge->InducedVelocity(xyz, q);        
       
-                q[2] *= -1.;
+                q[2] *= -1.;  ApplyImagePlaneSign(q);
                
                 U += q[0];
                 V += q[1];
@@ -22943,7 +22947,7 @@ void VSP_SOLVER::CalculateEdgeMachPerturbationVelocities(void)
                    VortexEdge->InducedVelocity(xyz, q);        
          
                    q[1] *= -1.;         
-                   q[2] *= -1.;
+                   q[2] *= -1.;  ApplyImagePlaneSign(q);
                   
                    U += q[0];
                    V += q[1];
@@ -31300,7 +31304,7 @@ void VSP_SOLVER::CalculateQuadTreeVelocitySurvey(int Case)
                   
                    RotorDisk(k).Velocity(xyz, q);        
          
-                   q[2] *= -1.;
+                   q[2] *= -1.;  ApplyImagePlaneSign(q);
                   
                    QuadTreeList_[j].velocity(i)[0] += q[0];
                    QuadTreeList_[j].velocity(i)[1] += q[1];
@@ -31335,7 +31339,7 @@ void VSP_SOLVER::CalculateQuadTreeVelocitySurvey(int Case)
                       RotorDisk(k).Velocity(xyz, q);        
             
                       q[1] *= -1.;
-                      q[2] *= -1.;
+                      q[2] *= -1.;  ApplyImagePlaneSign(q);
                         
                       QuadTreeList_[j].velocity(i)[0] += q[0];
                       QuadTreeList_[j].velocity(i)[1] += q[1];
@@ -31385,7 +31389,7 @@ void VSP_SOLVER::CalculateQuadTreeVelocitySurvey(int Case)
                   
                    EngineFace(k).Velocity(xyz, q);      
                
-                   q[2] *= -1.;
+                   q[2] *= -1.;  ApplyImagePlaneSign(q);
                    
                    QuadTreeList_[j].velocity(i)[0] += q[0];
                    QuadTreeList_[j].velocity(i)[1] += q[1];
@@ -31420,7 +31424,7 @@ void VSP_SOLVER::CalculateQuadTreeVelocitySurvey(int Case)
                       EngineFace(j).Velocity(xyz, q);      
                    
                       q[1] *= -1.;
-                      q[2] *= -1.;
+                      q[2] *= -1.;  ApplyImagePlaneSign(q);
                    
                       QuadTreeList_[j].velocity(i)[0] += q[0];
                       QuadTreeList_[j].velocity(i)[1] += q[1];
@@ -31482,7 +31486,7 @@ void VSP_SOLVER::CalculateQuadTreeVelocitySurvey(int Case)
                   
                   NearBody = CalculateSurfaceInducedVelocityAtOffBodyPoint(xyz, q);
          
-                  q[2] *= -1.;
+                  q[2] *= -1.;  ApplyImagePlaneSign(q);
                   
                   QuadTreeList_[j].velocity(i)[0] += q[0];
                   QuadTreeList_[j].velocity(i)[1] += q[1];
@@ -31517,7 +31521,7 @@ void VSP_SOLVER::CalculateQuadTreeVelocitySurvey(int Case)
                      NearBody = CalculateSurfaceInducedVelocityAtOffBodyPoint(xyz, q);
             
                      q[1] *= -1.;
-                     q[2] *= -1.;
+                     q[2] *= -1.;  ApplyImagePlaneSign(q);
                      
                      QuadTreeList_[j].velocity(i)[0] += q[0];
                      QuadTreeList_[j].velocity(i)[1] += q[1];
@@ -31668,7 +31672,7 @@ void VSP_SOLVER::CalculateVelocitySurvey(int Case)
             
              RotorDisk(k).Velocity(xyz, q);        
    
-             q[2] *= -1.;
+             q[2] *= -1.;  ApplyImagePlaneSign(q);
             
              U[i] += q[0];
              V[i] += q[1];
@@ -31703,7 +31707,7 @@ void VSP_SOLVER::CalculateVelocitySurvey(int Case)
                 RotorDisk(k).Velocity(xyz, q);        
       
                 q[1] *= -1.;
-                q[2] *= -1.;
+                q[2] *= -1.;  ApplyImagePlaneSign(q);
                
                 U[i] += q[0];
                 V[i] += q[1];
@@ -31743,7 +31747,7 @@ void VSP_SOLVER::CalculateVelocitySurvey(int Case)
          
          CalculateSurfaceInducedVelocityAtPoint(xyz, q);
 
-         q[2] *= -1.;
+         q[2] *= -1.;  ApplyImagePlaneSign(q);
          
          U[i] += q[0];
          V[i] += q[1];
@@ -31778,7 +31782,7 @@ void VSP_SOLVER::CalculateVelocitySurvey(int Case)
             CalculateSurfaceInducedVelocityAtPoint(xyz, q);
    
             q[1] *= -1.;
-            q[2] *= -1.;
+            q[2] *= -1.;  ApplyImagePlaneSign(q);
             
             U[i] += q[0];
             V[i] += q[1];

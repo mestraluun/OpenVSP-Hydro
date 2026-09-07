@@ -244,6 +244,7 @@ int NumberofSurveyPoints_            = 0;
 int NumberOfSurveyTimeSteps_         = 0;
 int LoadFEMDeformation_              = 0;
 int DoGroundEffectsAnalysis_         = 0;
+int DoFreeSurfaceAnalysis_           = 0;
 int Write2DFEMFile_                  = 0;
 int WriteTecplotFile_                = 0;
 int DoUnsteadyAnalysis_              = 0;
@@ -563,17 +564,30 @@ int main(int argc, char **argv)
     // Do ground effects analysis
     
     if ( DoGroundEffectsAnalysis_ ) {
-       
+
        VSPAERO().DoGroundEffectsAnalysis() = 1;
-       
+
+       // A free surface uses the reflection machinery unchanged except for the image sign,
+       // and takes the geometry as-is: pinning the height to the cg makes the geometry
+       // transform's DeltaHeight (HeightAboveGround - Zcg) exactly zero, so nothing is
+       // translated vertically and model z=0 is the undisturbed waterline.
+
+       if ( DoFreeSurfaceAnalysis_ ) {
+
+          VSPAERO().ImagePlaneSign() = -1;
+
+          HeightAboveGround_ = Zcg_;
+
+       }
+
        VSPAERO().VehicleRotationAngleVector(0) = 0.;
        VSPAERO().VehicleRotationAngleVector(1) = -AoAList_[1];
        VSPAERO().VehicleRotationAngleVector(2) = 0.;
-       
+
        VSPAERO().VehicleRotationAxisLocation(0) = Xcg_;
        VSPAERO().VehicleRotationAxisLocation(1) = Ycg_;
-       VSPAERO().VehicleRotationAxisLocation(2) = Zcg_;  
-       
+       VSPAERO().VehicleRotationAxisLocation(2) = Zcg_;
+
        VSPAERO().HeightAboveGround() = HeightAboveGround_;
        
        NumberOfAoAs_ = 1;
@@ -759,6 +773,9 @@ void PrintUsageHelp()
        printf(" -fem                               Load in FEM deformation file.\n");
        printf(" -write2dfem                        Write out 2D FEM load file.\n");
        printf(" -groundheight <H>                  Do ground effects analysis with cg set to <H> height above the ground. \n");
+       printf(" -freesurface                       Do free surface analysis, infinite-Froude limit.  Reflects about z=0 with an\n");
+       printf("                                    opposite-sign image (equivalent to AVL Zsym=-1); geometry is used as-is, so\n");
+       printf("                                    model z=0 is taken to be the undisturbed waterline.  No wave making. \n");
        printf(" -rotor <RPM>                       Do a rotor analysis, with specified rotor RPM. \n");
        printf(" -unsteady                          Run an unsteady analysis, assumes .groups file is setup! \n");
        printf("\n");                                                   
@@ -966,12 +983,26 @@ void ParseInput(int argc, char *argv[])
        }
        
        else if ( strcmp(argv[i],"-groundheight") == 0 ) {
-       
+
           DoGroundEffectsAnalysis_ = 1;
-          
+
           HeightAboveGround_ = atof(argv[++i]);
-          
-       }   
+
+       }
+
+       // Free surface, infinite-Froude limit.  Reuses the whole ground-effect path (the
+       // vehicle is rotated by AoA so the reflection plane stays horizontal, and the z=0
+       // image is evaluated at the same points), differing only in the sign of the image.
+       // No height is taken: the geometry is used where it sits, so model z=0 is the
+       // undisturbed waterline.
+
+       else if ( strcmp(argv[i],"-freesurface") == 0 ) {
+
+          DoGroundEffectsAnalysis_ = 1;
+
+          DoFreeSurfaceAnalysis_ = 1;
+
+       }
        
        else if ( strcmp(argv[i],"-write2dfem") == 0 ) {
           
@@ -2481,7 +2512,8 @@ void Solve(void)
              
              snprintf(VSPAERO().CaseString(),MAX_CHAR_SIZE*sizeof(char),"Case: %-d ...",Case);
              
-             if ( DoGroundEffectsAnalysis_ ) snprintf(VSPAERO().CaseString(),MAX_CHAR_SIZE*sizeof(char),"AoA: %7.3f ... H: %8.3f",-VSPAERO().VehicleRotationAngleVector(1),HeightAboveGround_);
+             if ( DoFreeSurfaceAnalysis_ ) snprintf(VSPAERO().CaseString(),MAX_CHAR_SIZE*sizeof(char),"AoA: %7.3f ... Free Surface",-VSPAERO().VehicleRotationAngleVector(1));
+             else if ( DoGroundEffectsAnalysis_ ) snprintf(VSPAERO().CaseString(),MAX_CHAR_SIZE*sizeof(char),"AoA: %7.3f ... H: %8.3f",-VSPAERO().VehicleRotationAngleVector(1),HeightAboveGround_);
 
              // Solve this case
              

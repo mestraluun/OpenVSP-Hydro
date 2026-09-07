@@ -1038,6 +1038,7 @@ enum GUI_VSP_SCREEN { VSP_ADV_LINK_SCREEN,	/*!< Advanced linking screen */
                       VSP_VSPAERO_SCREEN,	/*!< VSPAERO screen */
                       VSP_XSEC_SCREEN,	/*!< XSec screen */
                       VSP_WAVEDRAG_SCREEN,	/*!< Wave drag screen */
+                      VSP_HYDROVLM_SCREEN,	/*!< HydroVLM hydrofoil analysis screen */
                       VSP_MAIN_SCREEN,   /*!< Main screen */ // Leave at end of list, helps draw after update.
                       VSP_NUM_SCREENS,	/*!< Number of screens */
                       VSP_ALL_SCREENS   /*!< Flag for all screens */
@@ -1649,6 +1650,31 @@ enum VSPAERO_STABILITY_TYPE { STABILITY_OFF,	/*!< No stability analysis (off) */
 /*! Enum for the VSPAERO stall modeling options. */
 enum VSPAERO_STALL_TYPE { STALL_OFF,	/*!< Stall modeling off */
                           STALL_ON,	/*!< Stall modeling on */
+};
+
+/*!
+	\ingroup Enumerations
+*/
+/*! Enum for VSPAERO freestream fluid presets.  Selecting Air, Fresh Water, or Salt Water fills in
+    a standard density for that fluid; Custom leaves the density Parm as a free, manually-set input. */
+enum VSPAERO_FLUID_TYPE { FLUID_AIR,	/*!< Air at sea level, standard day (0.0023769 slug/ft^3, 1.225 kg/m^3) */
+                          FLUID_FRESH_WATER,	/*!< Fresh water (1.94 slug/ft^3, 1000 kg/m^3) */
+                          FLUID_SALT_WATER,	/*!< Salt water / seawater (1.99 slug/ft^3, 1025 kg/m^3) */
+                          FLUID_CUSTOM,	/*!< Manually specified freestream density */
+                          FLUID_NUM_TYPES	/*!< Number of freestream fluid presets */
+};
+
+/*!
+	\ingroup Enumerations
+*/
+/*! Enum for which unit system a VSPAERO_FLUID_TYPE preset density is filled in as.  OpenVSP does
+    not enforce a model-wide unit system, so this tells the Air/Fresh Water/Salt Water presets
+    whether to write Rho in English (slug/ft^3, matching a ft/lbf/s model) or SI (kg/m^3, matching
+    a m/kg/s model) units -- it does not convert or affect anything else (Vinf, Sref, geometry,
+    etc still must be kept consistent with this choice manually). */
+enum VSPAERO_FLUID_UNIT_SYSTEM { FLUID_UNIT_ENGLISH,	/*!< Fluid presets given in slug/ft^3 */
+                                 FLUID_UNIT_SI,	/*!< Fluid presets given in kg/m^3 */
+                                 FLUID_UNIT_NUM_SYSTEMS	/*!< Number of fluid preset unit systems */
 };
 
 /*!

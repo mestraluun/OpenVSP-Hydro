@@ -72,6 +72,7 @@
 #include "VehNotesScreen.h"
 #include "VSPAEROPlotScreen.h"
 #include "VSPAEROScreen.h"
+#include "HydroVLMScreen.h"
 #include "WaveDragScreen.h"
 
 #include "MainThreadIDMgr.h"
@@ -92,6 +93,13 @@ ScreenMgr::ScreenMgr( Vehicle* vPtr )
     MessageBase::Register( string( "ScreenMgr" ) );
 
     Fl::scheme( "GTK+" );
+
+    // OpenVSP-Hydro: tint the default gray GTK+ scheme blue so this fork is visually
+    // distinguishable at a glance from stock OpenVSP.
+    Fl::background( 213, 226, 240 );    // Panel/group background
+    Fl::background2( 240, 246, 253 );   // Input/text/browser field background
+    Fl::set_color( FL_SELECTION_COLOR, 61, 118, 189 );
+
     Fl::add_timeout( UPDATE_TIME, StaticTimerCB, this );
     Fl::add_handler( GlobalHandler );
 
@@ -982,6 +990,7 @@ void ScreenMgr::Init()
     m_ScreenVec[vsp::VSP_VAR_PRESET_SCREEN] = new VarPresetEditorScreen( this );
     m_ScreenVec[vsp::VSP_VSPAERO_PLOT_SCREEN] = new VSPAEROPlotScreen( this );
     m_ScreenVec[vsp::VSP_VSPAERO_SCREEN] = new VSPAEROScreen( this );
+    m_ScreenVec[vsp::VSP_HYDROVLM_SCREEN] = new HydroVLMScreen( this );
     m_ScreenVec[vsp::VSP_WAVEDRAG_SCREEN] = new WaveDragScreen( this );
     m_ScreenVec[vsp::VSP_XSEC_SCREEN] = new XSecViewScreen( this );
 

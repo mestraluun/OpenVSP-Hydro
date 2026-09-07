@@ -158,6 +158,17 @@ public:
 
 };
 
+class FreeSurfaceVLMAnalysis : public Analysis
+{
+public:
+
+    FreeSurfaceVLMAnalysis();
+
+    virtual void SetDefaults();
+    virtual string Execute();
+
+};
+
 class CpSlicerAnalysis : public Analysis
 {
 public:

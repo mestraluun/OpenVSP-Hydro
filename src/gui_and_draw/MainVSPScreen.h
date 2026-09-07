@@ -166,6 +166,7 @@ protected:
     ScreenMenuItem m_StructAssemblyMenuItem;
     ScreenMenuItem m_DegenGeomMenuItem;
     ScreenMenuItem m_VSPAEROMenuItem;
+    ScreenMenuItem m_HydroVLMMenuItem;
     ScreenMenuItem m_ParasiteDragMenuItem;
     ScreenMenuItem m_AeroStructMenuItem;
 
