@@ -62,6 +62,22 @@
                     <SourceLocation resid="Taskpane.Url"/>
                   </Action>
                 </Control>
+                <Control xsi:type="Button" id="Toolkit.OpenViewer">
+                  <Label resid="Viewer.Label"/>
+                  <Supertip>
+                    <Title resid="Viewer.Label"/>
+                    <Description resid="Viewer.Tooltip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon.16"/>
+                    <bt:Image size="32" resid="Icon.32"/>
+                    <bt:Image size="80" resid="Icon.80"/>
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <TaskpaneId>ViewerPane</TaskpaneId>
+                    <SourceLocation resid="Viewer.Url"/>
+                  </Action>
+                </Control>
               </Group>
             </OfficeTab>
           </ExtensionPoint>
@@ -77,15 +93,18 @@
       <bt:Urls>
         <bt:Url id="GetStarted.LearnMoreUrl" DefaultValue="https://learn.microsoft.com/office/dev/add-ins/excel/"/>
         <bt:Url id="Taskpane.Url" DefaultValue="https://localhost:3000/src/taskpane.html"/>
+        <bt:Url id="Viewer.Url" DefaultValue="https://localhost:3000/src/viewer.html"/>
       </bt:Urls>
       <bt:ShortStrings>
         <bt:String id="GetStarted.Title" DefaultValue="Excel Toolkit is ready"/>
         <bt:String id="Group.Label" DefaultValue="Toolkit"/>
         <bt:String id="Button.Label" DefaultValue="Open Toolkit"/>
+        <bt:String id="Viewer.Label" DefaultValue="Cell Viewer"/>
       </bt:ShortStrings>
       <bt:LongStrings>
         <bt:String id="GetStarted.Description" DefaultValue="Open the Toolkit from the Home tab to clean, summarise and format your selection."/>
         <bt:String id="Button.Tooltip" DefaultValue="Open the Excel Toolkit task pane."/>
+        <bt:String id="Viewer.Tooltip" DefaultValue="View and edit long cell text from 2-4 columns of one row, step through rows, and reuse text from other rows."/>
       </bt:LongStrings>
     </Resources>
   </VersionOverrides>

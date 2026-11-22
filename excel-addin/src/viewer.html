@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cell Viewer</title>
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+  <link rel="stylesheet" href="viewer.css">
+</head>
+<body>
+  <div id="app">
+    <header class="bar">
+      <div class="nav">
+        <button id="prev" title="Previous row (Alt+↑)" aria-label="Previous row">▲</button>
+        <label class="rowbox">Row <input id="row" type="number" min="1" inputmode="numeric"></label>
+        <span id="of" class="muted"></span>
+        <button id="next" title="Next row (Alt+↓)" aria-label="Next row">▼</button>
+      </div>
+      <div class="tools">
+        <button id="useSel" title="Use the columns of the cells selected in Excel">Use selection</button>
+        <button id="reload" title="Reload from Excel" aria-label="Reload">⟳</button>
+        <button id="smaller" title="Smaller text" aria-label="Smaller text">A−</button>
+        <button id="bigger" title="Larger text" aria-label="Larger text">A+</button>
+        <button id="popout" title="Open the viewer in its own window, floating above Excel">Pop out</button>
+      </div>
+    </header>
+
+    <details id="settings">
+      <summary>Settings · <span id="where"></span></summary>
+      <div class="settings">
+        <label>Columns <input id="cols" placeholder="e.g. A, C, F" size="12"></label>
+        <button id="applyCols">Apply</button>
+        <label><input type="checkbox" id="header"> Row 1 is a header</label>
+        <label><input type="checkbox" id="follow"> Follow the Excel selection</label>
+        <label><input type="checkbox" id="syncSel"> Move the Excel selection with the viewer</label>
+        <label><input type="checkbox" id="autosave"> Save automatically when changing row</label>
+      </div>
+    </details>
+
+    <p id="hint">
+      In Excel, select 2 to 4 cells in one row. Hold <kbd>Ctrl</kbd> (<kbd>Cmd</kbd> on Mac) and click to pick columns that
+      aren't next to each other. Put the column you want to edit rightmost, then click <b>Use selection</b>.
+      You can also type column letters under Settings.
+    </p>
+
+    <div id="conflict" class="conflict" hidden>
+      <span id="conflictMsg"></span>
+      <button id="overwrite">Overwrite with my text</button>
+      <button id="discard">Discard mine, reload</button>
+    </div>
+
+    <main id="cells"></main>
+
+    <div class="actions">
+      <button id="save" class="primary" title="Ctrl+S">Save</button>
+      <button id="revert">Revert</button>
+      <span id="dirty" class="dirtytag"></span>
+    </div>
+
+    <details id="browser">
+      <summary>Browse column <span id="bcol"></span> to find text to reuse</summary>
+      <div class="brow">
+        <input id="filter" type="search" placeholder="Filter…">
+        <button id="brefresh" title="Reload the column" aria-label="Reload column">⟳</button>
+      </div>
+      <div id="bcount" class="muted small"></div>
+      <ol id="blist"></ol>
+      <div id="bpreview" hidden>
+        <div class="bphead">
+          <b id="bprow"></b>
+          <button id="bins" title="Insert into the edit box at the cursor (or double-click a row)">Insert at cursor</button>
+          <button id="brep">Replace</button>
+          <button id="bapp">Append</button>
+          <button id="bcopy">Copy</button>
+          <button id="bgo">Go to row</button>
+        </div>
+        <pre id="bptext"></pre>
+      </div>
+    </details>
+
+    <footer id="status" role="status"></footer>
+  </div>
+
+  <div id="popped" class="popped" hidden>
+    <p>The Cell Viewer is open in its own window.</p>
+    <p class="muted">Keep this pane open: the window works through it. You can make the pane narrow.</p>
+    <button id="bringBack">Bring it back here</button>
+  </div>
+
+  <script src="viewer-core.js"></script>
+  <script src="viewer.js"></script>
+</body>
+</html>
