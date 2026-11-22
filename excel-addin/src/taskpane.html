@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Excel Toolkit</title>
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+  <link rel="stylesheet" href="taskpane.css">
+</head>
+<body>
+  <header>
+    <h1>Excel Toolkit</h1>
+    <p id="selection">Select a range to begin.</p>
+  </header>
+
+  <main>
+    <section>
+      <h2>Summarise</h2>
+      <button data-action="stats">Stats for selection</button>
+      <dl id="stats" hidden></dl>
+    </section>
+
+    <section>
+      <h2>Clean</h2>
+      <button data-action="trim">Trim whitespace</button>
+      <button data-action="upper">UPPER case</button>
+      <button data-action="lower">lower case</button>
+      <button data-action="proper">Proper Case</button>
+      <button data-action="textToNumber">Text → numbers</button>
+      <button data-action="dedupe">Remove duplicate rows</button>
+      <button data-action="blanks">Delete blank rows</button>
+    </section>
+
+    <section>
+      <h2>Format</h2>
+      <label>Fill <input type="color" id="fill" value="#fff2cc"></label>
+      <button data-action="highlight">Highlight</button>
+      <button data-action="table">Convert to table</button>
+      <button data-action="autofit">Autofit columns</button>
+      <button data-action="freeze">Freeze top row</button>
+      <button data-action="clearFormat">Clear formatting</button>
+    </section>
+
+    <section>
+      <h2>Insert</h2>
+      <button data-action="timestamp">Timestamp in active cell</button>
+      <button data-action="sample">Sample data sheet</button>
+    </section>
+  </main>
+
+  <footer id="status" role="status"></footer>
+  <script src="taskpane.js"></script>
+</body>
+</html>

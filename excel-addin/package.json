@@ -1,0 +1,23 @@
+{
+  "name": "excel-toolkit-addin",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Office.js task pane add-in for Excel desktop: clean, summarise and format the selection.",
+  "config": {
+    "app_to_debug": "excel",
+    "app_type_to_debug": "desktop",
+    "dev_server_port": 3000
+  },
+  "scripts": {
+    "certs": "office-addin-dev-certs install",
+    "dev-server": "node server.js",
+    "start": "office-addin-debugging start manifest.xml desktop --app excel",
+    "stop": "office-addin-debugging stop manifest.xml",
+    "validate": "office-addin-manifest validate manifest.xml"
+  },
+  "devDependencies": {
+    "office-addin-debugging": "^7.0.1",
+    "office-addin-dev-certs": "^3.0.1",
+    "office-addin-manifest": "^3.0.1"
+  }
+}
