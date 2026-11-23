@@ -13,6 +13,14 @@ It is one `.xll` file. **No installer and no admin rights are needed**, and noth
 
 Excel now loads it every time it starts. A **Cell Viewer** button appears on the **Home** tab, at the right.
 
+**No button?**
+1. Type `=CellViewerInfo()` in any cell.
+   - If it shows the version, the add-in is loaded and only the ribbon button is missing. Open the viewer from **Add-ins tab → Menu Commands → Cell Viewer → Open Cell Viewer**, or press **Alt+F8**, type `CellViewer` and click **Run**.
+   - If it shows `#NAME?`, the add-in is not loaded. See the next points.
+2. Check **File → Options → Add-ins → Manage: Disabled Items → Go…**. If Cell Viewer is listed, enable it.
+3. Check **File → Options → Trust Center → Trust Center Settings → Add-ins**. "Require Application Add-ins to be signed" or "Disable all Application Add-ins" block it.
+4. The add-in needs .NET Framework 4.6.2 or newer, which is standard on Windows 10/11.
+
 If Excel says the add-in is disabled or unsigned, your organisation blocks unsigned add-ins (*Trust Center → Add-ins*). Ask IT to allow it, or use the Office.js version in `../excel-addin`.
 
 To remove it, go to the same dialog, untick it, and delete the file.
@@ -42,7 +50,7 @@ You need Windows or Linux with the .NET 8 SDK; packing also works on Linux.
 cd excel-cellviewer-dna
 dotnet build -c Release
 ```
-The output is `bin/Release/net48/publish/CellViewer-AddIn64-packed.xll` (64-bit) and `CellViewer-AddIn-packed.xll` (32-bit).
+The output is `bin/Release/net462/publish/CellViewer-AddIn64-packed.xll` (64-bit) and `CellViewer-AddIn-packed.xll` (32-bit).
 
 The GitHub workflow `.github/workflows/cellviewer-xll.yml` builds both on Windows on every push that changes this folder. Download them from the repository's **Actions** tab → latest run → *CellViewer-xll*.
 

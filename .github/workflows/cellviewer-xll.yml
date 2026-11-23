@@ -22,8 +22,8 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force out | Out-Null
-          Copy-Item excel-cellviewer-dna/bin/Release/net48/publish/CellViewer-AddIn64-packed.xll out/CellViewer64.xll
-          Copy-Item excel-cellviewer-dna/bin/Release/net48/publish/CellViewer-AddIn-packed.xll   out/CellViewer32.xll
+          Copy-Item excel-cellviewer-dna/bin/Release/net462/publish/CellViewer-AddIn64-packed.xll out/CellViewer64.xll
+          Copy-Item excel-cellviewer-dna/bin/Release/net462/publish/CellViewer-AddIn-packed.xll   out/CellViewer32.xll
           Copy-Item excel-cellviewer-dna/README.md out/README.md
       - uses: actions/upload-artifact@v4
         with:
