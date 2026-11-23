@@ -1,0 +1,50 @@
+name: Build ShipClock APK
+
+on:
+  push:
+    paths:
+      - 'shipclock/**'
+      - '.github/workflows/shipclock.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Build APK
+        working-directory: shipclock
+        run: gradle assembleDebug --no-daemon --stacktrace
+
+      - name: Rename APK
+        run: cp shipclock/app/build/outputs/apk/debug/app-debug.apk ShipClock.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ShipClock-apk
+          path: ShipClock.apk
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: shipclock-latest
+          name: ShipClock (latest build)
+          target_commitish: ${{ github.sha }}
+          make_latest: false
+          body: "Latest ShipClock build from ${{ github.sha }}. Install ShipClock.apk on the phone."
+          files: ShipClock.apk
