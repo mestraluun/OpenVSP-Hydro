@@ -9,9 +9,20 @@ namespace CellViewer
 {
     public sealed class AddIn : IExcelAddIn
     {
-        public void AutoOpen() { }
+        /// <summary>Ctrl+Shift+Q opens the viewer (Application.OnKey syntax).</summary>
+        internal const string ShortcutKey = "^+Q";
 
-        public void AutoClose() => ViewerHost.CloseIfOpen();
+        public void AutoOpen()
+        {
+            try { XlCall.Excel(XlCall.xlcOnKey, ShortcutKey, "CellViewer"); }
+            catch { /* shortcut is a convenience; the menu and ribbon still work */ }
+        }
+
+        public void AutoClose()
+        {
+            try { XlCall.Excel(XlCall.xlcOnKey, ShortcutKey); } catch { /* Excel closing */ }
+            ViewerHost.CloseIfOpen();
+        }
     }
 
     /// <summary>
@@ -22,7 +33,7 @@ namespace CellViewer
     /// </summary>
     public static class Commands
     {
-        [ExcelCommand(Name = "CellViewer", MenuName = "Cell Viewer", MenuText = "Open Cell Viewer",
+        [ExcelCommand(Name = "CellViewer", MenuName = "Cell Viewer", MenuText = "Open Cell Viewer (Ctrl+Shift+Q)",
             Description = "Open the Cell Viewer window")]
         public static void OpenCellViewer() => ViewerHost.Show();
 
@@ -60,7 +71,7 @@ namespace CellViewer
         <group id='CellViewerGroup' label='Cell Viewer'>
           <button id='CellViewerOpen' label='Cell Viewer' size='large' imageMso='FindDialog'
                   screentip='Cell Viewer'
-                  supertip='A floating window for reading and editing long text in 2 to 4 columns of a row. Step through rows and reuse text from other rows.'
+                  supertip='Shortcut: Ctrl+Shift+Q. A floating window for reading and editing long text in 2 to 4 columns of a row. Step through rows and reuse text from other rows.'
                   onAction='OnOpenViewer'/>
         </group>
       </tab>

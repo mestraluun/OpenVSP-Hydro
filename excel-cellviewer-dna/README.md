@@ -27,7 +27,7 @@ To remove it, go to the same dialog, untick it, and delete the file.
 
 ## Use
 1. In Excel, select the cells to watch in one row. Hold **Ctrl** and click to pick columns that aren't next to each other, for example `B5`, `C5`, `F5`. Put the column you want to edit **rightmost**: it gets the big edit box.
-2. Click **Cell Viewer** (Home tab), then **Use selection**. You can also type column letters under ⚙ Settings.
+2. Press **Ctrl+Shift+Q**, or click **Cell Viewer** on the Home tab (or **Add-ins tab → Menu Commands → Cell Viewer**). Then click **Use selection**. You can also type column letters under ⚙ Settings.
 3. Change rows with **▲ / ▼** or **Alt+↑ / Alt+↓**, or by typing a row number and pressing Enter. If *Follow the Excel selection* is on, clicking a cell in Excel jumps the viewer to that row.
 4. Edit any box. Unsaved boxes are marked ●. Press **Ctrl+S** or click **Save**. With *Save automatically when changing row* on, edits are saved when you move to another row. Formula cells are shown read-only.
 5. **Browse column ▾** (or **Ctrl+F**) lists every filled cell of the edit column, with a filter box. Click an entry to read all of it, then:
