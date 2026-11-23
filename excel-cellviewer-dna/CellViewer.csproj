@@ -12,7 +12,7 @@
     <Nullable>disable</Nullable>
     <AssemblyName>CellViewer</AssemblyName>
     <RootNamespace>CellViewer</RootNamespace>
-    <Version>1.0.2</Version>
+    <Version>1.0.3</Version>
     <ExcelAddInName>Cell Viewer</ExcelAddInName>
     <!-- Packing (single-file .xll) runs on Windows; set RunExcelDnaPack=false to compile-check elsewhere. -->
   </PropertyGroup>

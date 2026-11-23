@@ -37,6 +37,7 @@ To remove it, go to the same dialog, untick it, and delete the file.
 
 More:
 - **F5** reloads from Excel and keeps your unsaved edits.
+- **Resize the boxes:** drag the dotted bar under a box up or down. Double-click the bar to reset it. The edit box takes the remaining space.
 - **A− / A+** change the text size.
 - *Stay on top of all windows* keeps it above other programs too. By default it stays above Excel only and hides when Excel is minimized.
 - If a cell was changed in Excel after the viewer loaded it, you're asked before anything is overwritten.

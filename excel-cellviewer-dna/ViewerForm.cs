@@ -22,6 +22,9 @@ namespace CellViewer
             public Label Addr, Hdr, Info;
             public TextBox Box;
             public CellData Cell;
+            public Control Head;
+            public int BoxRow;        // row index of the text box in _cellsTable
+            public int? Manual;       // height set by dragging the grip; null = automatic
         }
 
         sealed class NavOptions
@@ -513,17 +516,20 @@ namespace CellViewer
             _cellsTable.Controls.Clear();
             _cellsTable.RowStyles.Clear();
             _blocks.Clear();
-            _cellsTable.RowCount = _s.Cols.Length * 2;
+            int n = _s.Cols.Length;
+            _cellsTable.RowCount = n * 3 - 1;   // head + box per column, plus a grip under every box except the edit box
+            int row = 0;
 
-            for (int i = 0; i < _s.Cols.Length; i++)
+            for (int i = 0; i < n; i++)
             {
-                var head = new TableLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, ColumnCount = 3, RowCount = 1, Margin = new Padding(0, i == 0 ? 0 : 6, 0, 0) };
+                var head = new TableLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, ColumnCount = 3, RowCount = 1, Margin = new Padding(0, i == 0 ? 0 : 1, 0, 0) };
                 head.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
                 head.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
                 head.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
                 var b = new Block
                 {
                     Col = _s.Cols[i],
+                    Head = head,
                     Addr = new Label { AutoSize = true, Font = new Font(Font, FontStyle.Bold), Margin = new Padding(0, 2, 6, 2) },
                     Hdr = new Label { Dock = DockStyle.Fill, AutoEllipsis = true, ForeColor = SystemColors.GrayText, Margin = new Padding(0, 2, 6, 2), TextAlign = ContentAlignment.MiddleLeft },
                     Info = new Label { AutoSize = true, ForeColor = SystemColors.GrayText, Margin = new Padding(0, 2, 0, 2) },
@@ -538,9 +544,16 @@ namespace CellViewer
                 head.Controls.Add(b.Hdr, 1, 0);
                 head.Controls.Add(b.Info, 2, 0);
                 _cellsTable.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+                _cellsTable.Controls.Add(head, 0, row++);
+                b.BoxRow = row;
                 _cellsTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 80));
-                _cellsTable.Controls.Add(head, 0, i * 2);
-                _cellsTable.Controls.Add(b.Box, 0, i * 2 + 1);
+                _cellsTable.Controls.Add(b.Box, 0, row++);
+                if (i < n - 1)
+                {
+                    _cellsTable.RowStyles.Add(new RowStyle(SizeType.Absolute, GripHeight));
+                    _cellsTable.Controls.Add(MakeGrip(b), 0, row++);
+                    if (i < _s.BlockHeights.Length && _s.BlockHeights[i] > 0) b.Manual = _s.BlockHeights[i];
+                }
                 _blocks.Add(b);
             }
             LayoutBlockHeights();
@@ -553,25 +566,92 @@ namespace CellViewer
             if (BrowserOpen) _ = Safe(LoadColumnAsync);
         }
 
+        const int GripHeight = 9;
+
+        /// <summary>A drag handle under a context box: drag to resize it, double-click to reset.</summary>
+        Control MakeGrip(Block b)
+        {
+            var g = new Panel { Dock = DockStyle.Fill, Margin = new Padding(0), Cursor = Cursors.HSplit };
+            _tips.SetToolTip(g, "Drag to resize this box · double-click to reset");
+            bool drag = false;
+            int startY = 0, startH = 0;
+            g.MouseDown += (s, e) =>
+            {
+                if (e.Button != MouseButtons.Left) return;
+                drag = true;
+                startY = Cursor.Position.Y;      // screen coordinates: the grip itself moves while dragging
+                startH = b.Box.Height;
+                g.Capture = true;
+            };
+            g.MouseMove += (s, e) =>
+            {
+                if (!drag) return;
+                b.Manual = startH + (Cursor.Position.Y - startY);
+                LayoutBlockHeights();
+            };
+            g.MouseUp += (s, e) =>
+            {
+                if (!drag) return;
+                drag = false;
+                g.Capture = false;
+                b.Manual = b.Box.Height;          // keep the height actually applied
+                RememberBlockHeights();
+            };
+            g.DoubleClick += (s, e) =>
+            {
+                b.Manual = null;
+                LayoutBlockHeights();
+                RememberBlockHeights();
+            };
+            g.Paint += (s, e) =>
+            {
+                int cy = g.Height / 2, cx = g.Width / 2;
+                using (var br = new SolidBrush(SystemColors.ControlDark))
+                    for (int k = -3; k <= 3; k++) e.Graphics.FillEllipse(br, cx + k * 6 - 1, cy - 1, 3, 3);
+            };
+            g.Resize += (s, e) => g.Invalidate();
+            return g;
+        }
+
+        void RememberBlockHeights() =>
+            _s.BlockHeights = _blocks.Take(Math.Max(0, _blocks.Count - 1)).Select(x => x.Manual ?? 0).ToArray();
+
         /// <summary>
-        /// Context columns get 2 to 4 lines depending on the space available; the edit
-        /// column (last) always takes the rest, so it never scrolls out of view.
+        /// Context boxes use the height you dragged them to, or 2–4 lines automatically.
+        /// The edit box (last) always takes the rest and never shrinks below 3 lines, so it
+        /// can't be pushed out of view.
         /// </summary>
         void LayoutBlockHeights()
         {
             if (_textFont == null || _blocks.Count == 0) return;
             int line = _textFont.Height;
-            int headH = _blocks[0].Addr.PreferredHeight + 10;
-            int avail = _cellsTable.ClientSize.Height - _blocks.Count * headH;
-            int contexts = _blocks.Count - 1;
-            int ctx = contexts == 0 ? 0 : (int)(avail * 0.6 / (contexts + 1.5));   // edit box ≈ 1.5 context shares or more
-            ctx = Math.Max(line * 2 + 10, Math.Min(line * 4 + 10, ctx));
-            _cellsTable.SuspendLayout();
-            for (int i = 0; i < _blocks.Count; i++)
+            int n = _blocks.Count, contexts = n - 1;
+            int heads = _blocks.Sum(x => x.Head.Height > 0 ? x.Head.Height + x.Head.Margin.Vertical : x.Addr.PreferredHeight + 8);
+            int avail = _cellsTable.ClientSize.Height - heads - contexts * GripHeight;
+            int minBox = line * 2 + 10, minTarget = line * 3 + 10;
+
+            int auto = contexts == 0 ? 0 : (int)(avail * 0.6 / (contexts + 1.5));
+            auto = Math.Max(minBox, Math.Min(line * 4 + 10, auto));
+            var h = new int[contexts];
+            for (int i = 0; i < contexts; i++) h[i] = Math.Max(minBox, _blocks[i].Manual ?? auto);
+
+            // Give back space from the tallest boxes if the edit box would get too small.
+            int excess = h.Sum() - (avail - minTarget);
+            while (excess > 0)
             {
-                var style = _cellsTable.RowStyles[i * 2 + 1];
-                if (i == _blocks.Count - 1) { style.SizeType = SizeType.Percent; style.Height = 100; }
-                else { style.SizeType = SizeType.Absolute; style.Height = ctx; }
+                int k = Array.IndexOf(h, h.Max());
+                int cut = Math.Min(excess, h[k] - minBox);
+                if (cut <= 0) break;
+                h[k] -= cut;
+                excess -= cut;
+            }
+
+            _cellsTable.SuspendLayout();
+            for (int i = 0; i < n; i++)
+            {
+                var style = _cellsTable.RowStyles[_blocks[i].BoxRow];
+                if (i == n - 1) { style.SizeType = SizeType.Percent; style.Height = 100; }
+                else { style.SizeType = SizeType.Absolute; style.Height = h[i]; }
             }
             _cellsTable.ResumeLayout(true);
         }

@@ -23,6 +23,7 @@ namespace CellViewer
         public Rectangle Bounds = Rectangle.Empty;
         public bool BrowserOpen;
         public int BrowserHeight = 260;
+        public int[] BlockHeights = new int[0];   // dragged heights of the context boxes (0 = automatic)
 
         static string FilePath =>
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "CellViewer", "settings.txt");
@@ -56,6 +57,8 @@ namespace CellViewer
                 if (b.Length == 4 && b.All(n => n != int.MinValue)) s.Bounds = new Rectangle(b[0], b[1], b[2], b[3]);
                 s.BrowserOpen = Bool("BrowserOpen", false);
                 s.BrowserHeight = Math.Max(120, Int("BrowserHeight", 260));
+                s.BlockHeights = (Get("BlockHeights") ?? "").Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(x => int.TryParse(x, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) ? Math.Max(0, Math.Min(4000, n)) : 0).ToArray();
             }
             catch { /* corrupt file: use defaults */ }
             return s;
@@ -81,6 +84,7 @@ namespace CellViewer
                     $"Bounds={Bounds.X},{Bounds.Y},{Bounds.Width},{Bounds.Height}",
                     "BrowserOpen=" + BrowserOpen,
                     "BrowserHeight=" + BrowserHeight.ToString(CultureInfo.InvariantCulture),
+                    "BlockHeights=" + string.Join(",", BlockHeights.Select(x => x.ToString(CultureInfo.InvariantCulture))),
                 };
                 File.WriteAllLines(FilePath, lines);
             }
